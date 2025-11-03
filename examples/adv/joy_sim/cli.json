@@ -1,0 +1,9 @@
+{
+    "model_path": "examples/adv/urdf/archer_d6y.urdf",
+    "last_link": "link_6",
+    "mujoco_net_cfg": {
+        "ip": "127.0.0.1",
+        "port": 12345,
+        "client_timeout_ms": 200
+    }
+}

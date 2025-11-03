@@ -1,0 +1,15 @@
+{
+    "model_path": "hex_zmq_servers/robot/hexarm/urdf/archer_d6y_empty.urdf",
+    "last_link": "link_6",
+    "use_gripper": false,
+    "hexarm_master_net_cfg": {
+        "ip": "127.0.0.1",
+        "port": 12345,
+        "client_timeout_ms": 200
+    },
+    "hexarm_slave_net_cfg": {
+        "ip": "127.0.0.1",
+        "port": 12346,
+        "client_timeout_ms": 200
+    }
+}

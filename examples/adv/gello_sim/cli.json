@@ -1,0 +1,12 @@
+{
+    "gello_net_cfg": {
+        "ip": "127.0.0.1",
+        "port": 12345,
+        "client_timeout_ms": 200
+    },
+    "mujoco_net_cfg": {
+        "ip": "127.0.0.1",
+        "port": 12346,
+        "client_timeout_ms": 200
+    }
+}

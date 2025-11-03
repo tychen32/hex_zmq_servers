@@ -1,0 +1,38 @@
+#!/usr/bin/env python3
+# -*- coding:utf-8 -*-
+################################################################
+# Copyright 2025 Dong Zhaorui. All rights reserved.
+# Author: Dong Zhaorui 847235539@qq.com
+# Date  : 2025-09-25
+################################################################
+
+import os
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+HEX_ZMQ_SERVERS_DIR = f"{SCRIPT_DIR}/../../../hex_zmq_servers"
+
+from hex_zmq_servers import HexLaunch, HEX_ZMQ_SERVERS_PATH_DICT, HEX_ZMQ_CONFIGS_PATH_DICT
+
+NODE_CFGS = [
+    {
+        "name": "zmq_dummy_cli",
+        "venv": f"{HEX_ZMQ_SERVERS_DIR}/../.venv",
+        "node_path": f"{HEX_ZMQ_SERVERS_DIR}/../examples/basic/zmq_dummy/cli.py",
+        "cfg_path": f"{HEX_ZMQ_SERVERS_DIR}/../examples/basic/zmq_dummy/cli.json",
+    },
+    {
+        "name": "zmq_dummy_srv",
+        "venv": f"{HEX_ZMQ_SERVERS_DIR}/../.venv",
+        "node_path": HEX_ZMQ_SERVERS_PATH_DICT["zmq_dummy"],
+        "cfg_path": HEX_ZMQ_CONFIGS_PATH_DICT["zmq_dummy"],
+    },
+]
+
+
+def main():
+    launch = HexLaunch(NODE_CFGS)
+    launch.run()
+
+
+if __name__ == '__main__':
+    main()
