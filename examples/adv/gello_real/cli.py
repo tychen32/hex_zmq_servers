@@ -60,6 +60,11 @@ def main():
     rate = HexRate(500)
     gello_cmds = None
     while True:
+        # gello
+        gello_states_hdr, gello_states = gello_client.get_states()
+        if gello_states_hdr is not None:
+            gello_cmds = gello_states if use_gripper else gello_states[:-1]
+
         # hexarm
         hexarm_states_hdr, hexarm_states = hexarm_client.get_states()
         if hexarm_states_hdr is not None:
@@ -78,11 +83,6 @@ def main():
                     (gello_cmds.reshape(-1, 1), tau_comp.reshape(-1, 1)),
                     axis=1)
                 _ = hexarm_client.set_cmds(cmds)
-
-        # gello
-        gello_states_hdr, gello_states = gello_client.get_states()
-        if gello_states_hdr is not None:
-            gello_cmds = gello_states if use_gripper else gello_states[:-1]
 
         rate.sleep()
 

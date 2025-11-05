@@ -306,12 +306,12 @@ class HexMujocoE3Desktop(HexMujocoBase):
             else:
                 cmd_pos = cmds[:, 0].copy()
                 cmd_tor = cmds[:, 1].copy()
-            cmd_pos[-1] /= self.__gripper_ratio
             cmd_pos = self._apply_pos_limits(
                 cmd_pos,
                 self._limits[limit_idx, :, 0],
                 self._limits[limit_idx, :, 1],
             )
+            cmd_pos[-1] /= self.__gripper_ratio
             tau_cmds = self.__mit_ctrl(
                 self.__mit_kp,
                 self.__mit_kd,

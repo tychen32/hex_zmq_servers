@@ -1,0 +1,21 @@
+{
+    "model_path": "examples/adv/urdf/archer_d6y.urdf",
+    "last_link": "link_6",
+    "traj_center": [
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0
+    ],
+    "traj_radius": 0.3,
+    "traj_period": 1.0,
+    "traj_center_duration": 0.3,
+    "mujoco_net_cfg": {
+        "ip": "127.0.0.1",
+        "port": 12345,
+        "client_timeout_ms": 200
+    }
+}
