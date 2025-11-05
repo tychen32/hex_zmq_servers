@@ -36,8 +36,9 @@ NODE_CFGS = [
             "last_link": "link_6",
             "traj_center": [0.4, 0.0, 0.35, 1.0, 0.0, 0.0, 0.0],
             "traj_radius": 0.2,
-            "traj_period": 1.0,
-            "traj_center_duration": 0.3,
+            "traj_period": 4.0,
+            "traj_center_duration": 0.5,
+            "csv_dir": f"{SCRIPT_DIR}/csv",
             "mujoco_net_cfg": {
                 "port": MUJOCO_SRV_PORT,
             },

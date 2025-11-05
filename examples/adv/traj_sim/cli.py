@@ -6,8 +6,7 @@
 # Date  : 2025-09-25
 ################################################################
 
-import argparse, json, time, csv
-from datetime import datetime
+import argparse, json, time, csv, os
 import numpy as np
 from hex_zmq_servers import (
     HexRate,
@@ -16,7 +15,6 @@ from hex_zmq_servers import (
     HexMujocoArcherD6yClient,
 )
 from hex_robo_utils import HexDynUtil as DynUtil
-# from hex_robo_utils import HexCtrlUtilPid as CtrlUtil
 from hex_robo_utils import HexCtrlUtilMit as CtrlUtil
 from hex_robo_utils import part2trans, trans2part, trans_inv
 
@@ -76,16 +74,29 @@ def interp_arm(cur_q, tar_joint, grip_flag, use_gripper=True, err_limit=0.05):
     return mid_joint, interp_flag
 
 
-def create_traj_arr(traj_center, traj_radius, traj_period, traj_center_duration, hz):
+def create_traj_arr(traj_center, traj_radius, traj_period,
+                    traj_center_duration, hz):
     center_pos = traj_center[:3]
     center_quat = traj_center[3:]
     trans_center_in_base = part2trans(center_pos, center_quat)
 
-    traj_pos_list = []
-    traj_quat_list = []
-    traj_num = int(traj_period * hz)
-    for i in range(traj_num):
-        theta = 2 * np.pi * i / traj_num
+    trans_start_in_center = part2trans(np.array([
+        0.0,
+        0.0,
+        traj_radius,
+    ]), center_quat)
+    trans_start_in_base = trans_center_in_base @ trans_start_in_center
+    start_pos, _ = trans2part(trans_start_in_base)
+
+    center_num = int(traj_center_duration * hz)
+    center_pos_list = np.linspace(center_pos, start_pos, center_num).tolist()
+    center_quat_list = [center_quat] * center_num
+
+    circle_pos_list = []
+    circle_quat_list = []
+    circle_num = int(traj_period * hz)
+    for i in range(circle_num):
+        theta = 2 * np.pi * i / circle_num
         trans_pt_in_center = part2trans(
             np.array([
                 0.0,
@@ -93,15 +104,14 @@ def create_traj_arr(traj_center, traj_radius, traj_period, traj_center_duration,
                 traj_radius * np.cos(theta),
             ]), center_quat)
         trans_pt_in_base = trans_center_in_base @ trans_pt_in_center
-        traj_pos, traj_quat = trans2part(trans_pt_in_base)
-        traj_pos_list.append(traj_pos)
-        traj_quat_list.append(traj_quat)
+        circle_pos, circle_quat = trans2part(trans_pt_in_base)
+        circle_pos_list.append(circle_pos)
+        circle_quat_list.append(circle_quat)
 
-    center_num = int(traj_center_duration * hz)
-    traj_num += center_num
-    traj_pos_list += [center_pos] * center_num
-    traj_quat_list += [center_quat] * center_num
-
+    traj_pos_list = center_pos_list + circle_pos_list + center_pos_list[::-1]
+    traj_quat_list = center_quat_list + circle_quat_list + center_quat_list[::
+                                                                            -1]
+    traj_num = center_num + circle_num + center_num
     return np.array(traj_pos_list), np.array(traj_quat_list), traj_num
 
 
@@ -118,6 +128,7 @@ def main():
         traj_radius = cfg["traj_radius"]
         traj_period = cfg["traj_period"]
         traj_center_duration = cfg["traj_center_duration"]
+        csv_dir = cfg["csv_dir"]
         mujoco_net_cfg = cfg["mujoco_net_cfg"]
     except KeyError as ke:
         missing_key = ke.args[0]
@@ -129,13 +140,11 @@ def main():
         last_link=last_link,
         end_pose=END_POSE,
     )
-    kp = np.array([500.0, 500.0, 500.0, 500.0, 500.0, 500.0, 500.0])
-    kd = np.array([5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0])
-    ctrl_util = CtrlUtil(
-        # kp=np.array([500.0, 500.0, 500.0, 500.0, 500.0, 500.0, 500.0]),
-        # kd=np.array([5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0]),
-        # ki=np.zeros(7),
-    )
+    # kp = np.array([500.0, 500.0, 500.0, 500.0, 500.0, 500.0, 500.0])
+    # kd = np.array([5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0])
+    kp = np.array([200.0, 200.0, 200.0, 75.0, 30.0, 30.0, 20.0])
+    kd = np.array([5.0, 5.0, 5.0, 5.0, 1.5, 1.5, 1.0])
+    ctrl_util = CtrlUtil()
 
     # wait servers to work
     if not wait_client_working(mujoco_client):
@@ -143,26 +152,30 @@ def main():
         return
 
     # create CSV file for logging
-    timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-    csv_filename = f"traj_sim_data_{timestamp_str}.csv"
+    os.makedirs(csv_dir, exist_ok=True)
+    csv_filename = f"{csv_dir}/traj_sim.csv"
     csv_file = open(csv_filename, 'w', newline='')
     csv_writer = csv.writer(csv_file)
-    
+
     # write CSV header
-    header = ['timestamp']
+    header = ['ts']
     for i in range(7):
         header.append(f'q{i}')
     for i in range(7):
         header.append(f'dq{i}')
     for i in range(7):
-        header.append(f'mid_joint{i}')
+        header.append(f'eff{i}')
+    for i in range(7):
+        header.append(f'mid_q{i}')
+    for i in range(7):
+        header.append(f'ik_q{i}')
     csv_writer.writerow(header)
     hex_log(HEX_LOG_LEVEL["info"], f"CSV logging to: {csv_filename}")
 
     # work loop
     hz = 500.0
     rate = HexRate(hz)
-    err_limit = 1.0
+    err_limit = 0.2
     cur_q = None
     tau_comp = np.zeros(7)
     traj_pos_arr, traj_quat_arr, traj_num = create_traj_arr(
@@ -183,16 +196,19 @@ def main():
             # current states
             robot_states_hdr, robot_states = mujoco_client.get_states("robot")
             if robot_states_hdr is not None:
-                cur_ts = robot_states_hdr["ts"]
-                hex_log(HEX_LOG_LEVEL["info"], f"robot_states_ts: {cur_ts}")
+                cur_ts = robot_states_hdr["ts"][
+                    "s"] * 1_000_000_000 + robot_states_hdr["ts"]["ns"]
                 cur_q = robot_states[:, 0]
                 cur_dq = robot_states[:, 1]
                 cur_eff = robot_states[:, 2]
+
                 arm_q = cur_q[:-1]
                 arm_dq = cur_dq[:-1]
                 _, c_mat, g_vec, _, _ = dyn_util.dynamic_params(arm_q, arm_dq)
                 tau_comp = c_mat @ arm_dq + g_vec
                 tau_comp = np.concatenate((tau_comp, np.zeros(1)), axis=0)
+            else:
+                cur_q = None
 
             if cur_q is not None:
                 # update target pose
@@ -211,11 +227,11 @@ def main():
                     tar_stable_in_base @ trans_end_in_stable)
 
                 # interp joint
-                mid_joint = cur_q.copy()
+                mid_q = cur_q.copy()
                 ik_success, ik_q, _ = dyn_util.inverse_kinematics(
                     (tar_pos, tar_quat), cur_q[:-1])
                 if ik_success:
-                    mid_joint, _ = interp_arm(
+                    mid_q, _ = interp_arm(
                         cur_q,
                         ik_q,
                         grip_flag=False,
@@ -230,21 +246,23 @@ def main():
                 cmds = ctrl_util(
                     kp=kp,
                     kd=kd,
-                    q_tar=mid_joint,
+                    q_tar=mid_q,
                     dq_tar=np.zeros(7),
                     q_cur=cur_q,
                     dq_cur=cur_dq,
                     tau_comp=tau_comp,
                 )
                 _ = mujoco_client.set_cmds(cmds)
-                
+
                 # log data to CSV
                 if robot_states_hdr is not None:
                     csv_row = [cur_ts]
                     csv_row.extend(cur_q.tolist())
                     csv_row.extend(cur_dq.tolist())
                     csv_row.extend(cur_eff.tolist())
-                    csv_row.extend(mid_joint.tolist())
+                    csv_row.extend(mid_q.tolist())
+                    csv_row.extend(ik_q.tolist())
+                    csv_row.append(0.2)
                     csv_writer.writerow(csv_row)
 
             traj_idx = (traj_idx + 1) % traj_num
