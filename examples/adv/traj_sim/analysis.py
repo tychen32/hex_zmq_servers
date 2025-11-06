@@ -24,17 +24,18 @@ def load_data(csv_path, ignore_s=2):
                          dtype=None,
                          encoding='utf-8')
     print(f"Loaded {len(data)} data points from {csv_path}")
-    
+
     # Filter data: only keep ts > ignore_s * 1e9
     original_count = len(data)
     data = data[data['ts'] > ignore_s * 1e9]
     filtered_count = len(data)
-    
+
     if filtered_count < original_count:
-        print(f"Filtered: {original_count - filtered_count} points removed (ts <= {ignore_s}e9)")
+        print(
+            f"Filtered: {original_count - filtered_count} points removed (ts <= {ignore_s}e9)"
+        )
         print(f"Analyzing: {filtered_count} data points (ts > {ignore_s}e9)")
-    
-    print(f"Columns: {list(data.dtype.names)}")
+
     return data
 
 
@@ -158,10 +159,18 @@ def plot_tracking_errors(data, joint_indices=None):
         ax = axes[idx]
         error_mid_q = data[f'mid_q{joint_idx}'] - data[f'q{joint_idx}']
         error_ik_q = data[f'ik_q{joint_idx}'] - data[f'q{joint_idx}']
-        
-        ax.plot(time, error_mid_q, label=f'mid_q{joint_idx} error', linewidth=1.5)
-        ax.plot(time, error_ik_q, label=f'ik_q{joint_idx} error', linewidth=1.0, linestyle='--', alpha=0.7)
-        
+
+        ax.plot(time,
+                error_mid_q,
+                label=f'mid_q{joint_idx} error',
+                linewidth=1.5)
+        ax.plot(time,
+                error_ik_q,
+                label=f'ik_q{joint_idx} error',
+                linewidth=1.0,
+                linestyle='--',
+                alpha=0.7)
+
         ax.set_ylabel(f'Joint {joint_idx} error (rad)')
         ax.legend(loc='upper right')
         ax.grid(True, alpha=0.3)
@@ -171,7 +180,7 @@ def plot_tracking_errors(data, joint_indices=None):
         max_err_mid = np.max(np.abs(error_mid_q))
         mean_err_ik = np.mean(np.abs(error_ik_q))
         max_err_ik = np.max(np.abs(error_ik_q))
-        
+
         ax.text(0.02,
                 0.98,
                 f'mid_q: Mean={mean_err_mid:.5f}, Max={max_err_mid:.5f}\n' +
@@ -237,7 +246,7 @@ def plot_summary_statistics(data):
     errors_max_ik_q = [
         np.max(np.abs(data[f'ik_q{j}'] - data[f'q{j}'])) for j in joints
     ]
-    
+
     x = np.arange(len(joints))
     width = 0.2
     ax.bar(x - width * 1.5,
@@ -264,13 +273,14 @@ def plot_summary_statistics(data):
            label='ik_q Max',
            color='darkorange',
            alpha=0.7)
-    
+
     ax.set_xlabel('Joint Index')
     ax.set_ylabel('Tracking Error (rad)')
     ax.set_title('Tracking Errors (mid_q vs ik_q)')
     ax.set_xticks(x)
     ax.legend()
     ax.grid(True, alpha=0.3, axis='y')
+    ax.set_ylim(0, 0.2)
 
     fig.suptitle('Summary Statistics', fontsize=16, fontweight='bold')
     plt.tight_layout()
@@ -304,10 +314,12 @@ def print_statistics(data):
 
         error_mid_q = data[f'mid_q{j}'] - data[f'q{j}']
         error_ik_q = data[f'ik_q{j}'] - data[f'q{j}']
-        print(f"    Tracking error (mid_q) - Mean: {np.mean(np.abs(error_mid_q)):.6f} rad, "
-              f"Max: {np.max(np.abs(error_mid_q)):.6f} rad")
-        print(f"    Tracking error (ik_q)  - Mean: {np.mean(np.abs(error_ik_q)):.6f} rad, "
-              f"Max: {np.max(np.abs(error_ik_q)):.6f} rad")
+        print(
+            f"    Tracking error (mid_q) - Mean: {np.mean(np.abs(error_mid_q)):.6f} rad, "
+            f"Max: {np.max(np.abs(error_mid_q)):.6f} rad")
+        print(
+            f"    Tracking error (ik_q)  - Mean: {np.mean(np.abs(error_ik_q)):.6f} rad, "
+            f"Max: {np.max(np.abs(error_ik_q)):.6f} rad")
 
     print("\n" + "=" * 60 + "\n")
 

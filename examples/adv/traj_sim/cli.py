@@ -18,6 +18,10 @@ from hex_robo_utils import HexDynUtil as DynUtil
 from hex_robo_utils import HexCtrlUtilMit as CtrlUtil
 from hex_robo_utils import part2trans, trans2part, trans_inv
 
+INIT_JOINT = np.array(
+    [0.0, -0.0205679922, 2.57081467, -0.978840246, 0.0, 0.0],
+    dtype=np.float64,
+)
 END_POSE = np.array(
     [0.0, 0.0, 0.12, 0.7071068, 0.0, -0.7071068, 0.0],
     dtype=np.float64,
@@ -140,8 +144,6 @@ def main():
         last_link=last_link,
         end_pose=END_POSE,
     )
-    # kp = np.array([500.0, 500.0, 500.0, 500.0, 500.0, 500.0, 500.0])
-    # kd = np.array([5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0])
     kp = np.array([200.0, 200.0, 200.0, 75.0, 30.0, 30.0, 20.0])
     kd = np.array([5.0, 5.0, 5.0, 5.0, 1.5, 1.5, 1.0])
     ctrl_util = CtrlUtil()
@@ -178,6 +180,7 @@ def main():
     err_limit = 0.2
     cur_q = None
     tau_comp = np.zeros(7)
+    tar_joint = INIT_JOINT.copy()
     traj_pos_arr, traj_quat_arr, traj_num = create_traj_arr(
         traj_center,
         traj_radius,
@@ -228,19 +231,45 @@ def main():
 
                 # interp joint
                 mid_q = cur_q.copy()
-                ik_success, ik_q, _ = dyn_util.inverse_kinematics(
-                    (tar_pos, tar_quat), cur_q[:-1])
-                if ik_success:
-                    mid_q, _ = interp_arm(
+                if tar_joint is not None:
+                    mid_q, interp_flag = interp_arm(
                         cur_q,
-                        ik_q,
+                        tar_joint,
                         grip_flag=False,
                         use_gripper=True,
                         err_limit=err_limit,
                     )
+                    # arrive target joint
+                    if not interp_flag:
+                        tar_joint = None
                 else:
-                    tar_pos, tar_quat = dyn_util.forward_kinematics(
-                        cur_q[:-1])[-1]
+                    ik_success, ik_q, _ = dyn_util.inverse_kinematics(
+                        (tar_pos, tar_quat), cur_q[:-1])
+                    if ik_success:
+                        mid_q, _ = interp_arm(
+                            cur_q,
+                            ik_q,
+                            grip_flag=False,
+                            use_gripper=True,
+                            err_limit=err_limit,
+                        )
+                    else:
+                        tar_pos, tar_quat = dyn_util.forward_kinematics(
+                            cur_q[:-1])[-1]
+
+                    # log data to CSV
+                    if robot_states_hdr is not None:
+                        csv_row = [cur_ts]
+                        csv_row.extend(cur_q.tolist())
+                        csv_row.extend(cur_dq.tolist())
+                        csv_row.extend(cur_eff.tolist())
+                        csv_row.extend(mid_q.tolist())
+                        csv_row.extend(ik_q.tolist())
+                        csv_row.append(0.2)
+                        csv_writer.writerow(csv_row)
+
+                    # update traj point
+                    traj_idx = (traj_idx + 1) % traj_num
 
                 # set cmds
                 cmds = ctrl_util(
@@ -254,18 +283,6 @@ def main():
                 )
                 _ = mujoco_client.set_cmds(cmds)
 
-                # log data to CSV
-                if robot_states_hdr is not None:
-                    csv_row = [cur_ts]
-                    csv_row.extend(cur_q.tolist())
-                    csv_row.extend(cur_dq.tolist())
-                    csv_row.extend(cur_eff.tolist())
-                    csv_row.extend(mid_q.tolist())
-                    csv_row.extend(ik_q.tolist())
-                    csv_row.append(0.2)
-                    csv_writer.writerow(csv_row)
-
-            traj_idx = (traj_idx + 1) % traj_num
             rate.sleep()
     finally:
         csv_file.close()
