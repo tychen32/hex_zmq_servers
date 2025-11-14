@@ -11,7 +11,10 @@ import threading
 import numpy as np
 
 from ..cam_base import HexCamBase
-from ...zmq_base import HexSafeValue
+from ...zmq_base import (
+    hex_zmq_ts_now,
+    HexSafeValue,
+)
 from ...hex_launch import hex_log, HEX_LOG_LEVEL
 from berxel_py_wrapper import *
 
@@ -138,7 +141,7 @@ class HexCamBerxel(HexCamBase):
             )
             frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
-        return ts, frame
+        return ts if self.__sens_ts else hex_zmq_ts_now(), frame
 
     def __open_device(self, serial_number: str | None = None) -> bool:
         # init context

@@ -65,7 +65,7 @@ class HexRobotDummy(HexRobotBase):
             cmds_pack = cmds_value.get(timeout_s=-1.0)
             if cmds_pack is not None:
                 ts, seq, cmds = cmds_pack
-                if seq > last_cmds_seq:
+                if seq != last_cmds_seq:
                     last_cmds_seq = seq
                     if hex_zmq_ts_delta_ms(hex_zmq_ts_now(), ts) < 200.0:
                         cmds = np.clip(

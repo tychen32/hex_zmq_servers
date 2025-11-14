@@ -121,6 +121,10 @@ class HexMujocoClientBase(HexZMQClientBase):
         hdr, _ = self.request({"cmd": "reset"})
         return hdr
 
+    def seq_clear(self):
+        clear_hdr, _ = self.request({"cmd": "seq_clear"})
+        return clear_hdr
+
     def get_dofs(self):
         _, dofs = self.request({"cmd": "get_dofs"})
         return dofs
@@ -258,6 +262,7 @@ class HexMujocoServerBase(HexZMQServerBase):
         self._cmds_seq = -1
         self._rgb_value = HexSafeValue()
         self._depth_value = HexSafeValue()
+        self._seq_clear_flag = False
 
     def work_loop(self):
         try:
@@ -271,6 +276,10 @@ class HexMujocoServerBase(HexZMQServerBase):
             ])
         finally:
             self._device.close()
+
+    def _seq_clear(self):
+        self._seq_clear_flag = True
+        return True
 
     def _get_states(self, recv_hdr: dict):
         try:
@@ -297,6 +306,11 @@ class HexMujocoServerBase(HexZMQServerBase):
 
     def _set_cmds(self, recv_hdr: dict, recv_buf: np.ndarray):
         seq = recv_hdr.get("args", None)
+        if self._seq_clear_flag:
+            self._seq_clear_flag = False
+            self._cmds_seq = -1
+            return self.no_ts_hdr(recv_hdr, False), None
+
         if seq is not None and seq > self._cmds_seq:
             delta = (seq - self._cmds_seq) % self._max_seq_num
             if delta >= 0 and delta < 1e6:

@@ -123,8 +123,7 @@ class HexRobotGello(HexRobotBase):
             cmds_pack = cmds_value.get(timeout_s=-1.0)
             if cmds_pack is not None:
                 ts, seq, cmds = cmds_pack
-                delta_seq = (seq - last_cmds_seq) % self._max_seq_num
-                if delta_seq > 0 and delta_seq < 1e6:
+                if seq != last_cmds_seq:
                     last_cmds_seq = seq
                     if hex_zmq_ts_delta_ms(hex_zmq_ts_now(), ts) < 200.0:
                         self.__set_cmds(cmds)
@@ -162,7 +161,7 @@ class HexRobotGello(HexRobotBase):
                 self._limits[:, 0],
                 self._limits[:, 1],
             )
-            return ts, rads
+            return ts if self.__sens_ts else hex_zmq_ts_now(), rads
 
     def __set_cmds(self, cmds: np.ndarray):
         if len(cmds) != len(self.__idxs):

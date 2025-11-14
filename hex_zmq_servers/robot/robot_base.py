@@ -35,6 +35,7 @@ class HexRobotBase(HexDeviceBase):
         HexDeviceBase.__init__(self)
         self._dofs = None
         self._limits = None
+        self._seq_clear_flag = False
 
     def __del__(self):
         HexDeviceBase.__del__(self)
@@ -101,6 +102,10 @@ class HexRobotClientBase(HexZMQClientBase):
     def __del__(self):
         HexZMQClientBase.__del__(self)
 
+    def seq_clear(self):
+        clear_hdr, _ = self.request({"cmd": "seq_clear"})
+        return clear_hdr
+
     def get_dofs(self):
         _, dofs = self.request({"cmd": "get_dofs"})
         return dofs
@@ -162,6 +167,7 @@ class HexRobotServerBase(HexZMQServerBase):
         self._states_value = HexSafeValue()
         self._cmds_value = HexSafeValue()
         self._cmds_seq = -1
+        self._seq_clear_flag = False
 
     def __del__(self):
         HexZMQServerBase.__del__(self)
@@ -176,6 +182,10 @@ class HexRobotServerBase(HexZMQServerBase):
             ])
         finally:
             self._device.close()
+
+    def _seq_clear(self):
+        self._seq_clear_flag = True
+        return True
 
     def _get_states(self, recv_hdr: dict):
         try:
@@ -202,6 +212,11 @@ class HexRobotServerBase(HexZMQServerBase):
 
     def _set_cmds(self, recv_hdr: dict, recv_buf: np.ndarray):
         seq = recv_hdr.get("args", None)
+        if self._seq_clear_flag:
+            self._seq_clear_flag = False
+            self._cmds_seq = -1
+            return self.no_ts_hdr(recv_hdr, False), None
+
         if seq is not None:
             delta = (seq - self._cmds_seq) % self._max_seq_num
             if delta >= 0 and delta < 1e6:

@@ -31,7 +31,7 @@ NET_CONFIG = {
 }
 
 MUJOCO_CONFIG = {
-    "states_rate": 250,
+    "states_rate": 500,
     "img_rate": 30,
     "headless": False,
     "sens_ts": True,
@@ -105,6 +105,8 @@ class HexMujocoArcherD6yServer(HexMujocoServerBase):
     def _process_request(self, recv_hdr: dict, recv_buf: np.ndarray):
         if recv_hdr["cmd"] == "is_working":
             return self.no_ts_hdr(recv_hdr, self._device.is_working()), None
+        elif recv_hdr["cmd"] == "seq_clear":
+            return self.no_ts_hdr(recv_hdr, self._seq_clear()), None
         elif recv_hdr["cmd"] == "reset":
             return self.no_ts_hdr(recv_hdr, self._device.reset()), None
         elif recv_hdr["cmd"] == "get_dofs":
