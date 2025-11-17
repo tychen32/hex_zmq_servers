@@ -12,7 +12,7 @@ from hex_zmq_servers import HEX_ZMQ_SERVERS_PATH_DICT, HEX_ZMQ_CONFIGS_PATH_DICT
 from hex_zmq_servers import HEXARM_URDF_PATH_DICT
 
 # robot model config
-ARM_TYPE = "archer_d6y"
+ARM_TYPE = "archer_y6"
 GRIPPER_TYPE = "empty"
 if GRIPPER_TYPE == "empty":
     USE_GRIPPER = False

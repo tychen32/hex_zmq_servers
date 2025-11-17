@@ -14,7 +14,7 @@ from hex_zmq_servers import (
     HEX_LOG_LEVEL,
     hex_log,
     HexRobotGelloClient,
-    HexMujocoArcherD6yClient,
+    HexMujocoArcherY6Client,
 )
 from hex_robo_utils import HexDynUtil as DynUtil
 
@@ -47,7 +47,7 @@ def main():
         raise ValueError(f"cfg is not valid, missing key: {missing_key}")
 
     gello_client = HexRobotGelloClient(net_config=gello_net_cfg)
-    mujoco_client = HexMujocoArcherD6yClient(net_config=mujoco_net_cfg)
+    mujoco_client = HexMujocoArcherY6Client(net_config=mujoco_net_cfg)
     dyn_util = DynUtil(model_path, last_link)
 
     # wait servers to work

@@ -11,7 +11,7 @@ from hex_zmq_servers import (
     HexRate,
     HEX_LOG_LEVEL,
     hex_log,
-    HexMujocoArcherD6yClient,
+    HexMujocoArcherY6Client,
 )
 
 import cv2
@@ -29,10 +29,10 @@ def main():
     except KeyError as ke:
         missing_key = ke.args[0]
         raise ValueError(
-            f"archer_d6y_mujoco_config is not valid, missing key: {missing_key}"
+            f"archer_y6_mujoco_config is not valid, missing key: {missing_key}"
         )
 
-    client = HexMujocoArcherD6yClient(net_config=net_config)
+    client = HexMujocoArcherY6Client(net_config=net_config)
 
     # wait for mujoco to work
     for i in range(10):

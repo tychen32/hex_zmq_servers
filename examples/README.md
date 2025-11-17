@@ -12,7 +12,7 @@ examples/
 │   ├── robot_hexarm/       # HexArm robot
 │   ├── cam_dummy/          # Dummy camera
 │   ├── cam_berxel/         # Berxel depth camera
-│   ├── mujoco_archer_d6y/  # Archer D6Y simulation
+│   ├── mujoco_archer_y6/   # Archer Y6 simulation
 │   ├── mujoco_e3_desktop/  # E3 Desktop simulation
 │   └── zmq_dummy/          # ZMQ communication test
 └── adv/                    # Advanced examples (multi-device coordination)
@@ -43,9 +43,9 @@ examples/
 - **cam_berxel**
   - Description: Berxel depth camera example, showing how to use Berxel RGB-D camera.
   - [Details](basic/cam_berxel/README.md)
-- **mujoco_archer_d6y**
-  - Description: Archer D6Y simulation example, showing how to use Archer D6Y simulation.
-  - [Details](basic/mujoco_archer_d6y/README.md)
+- **mujoco_archer_y6**
+  - Description: Archer Y6 simulation example, showing how to use Archer Y6 simulation.
+  - [Details](basic/mujoco_archer_y6/README.md)
 - **mujoco_e3_desktop**
   - Description: E3 Desktop simulation example, showing how to use E3 Desktop simulation.
   - [Details](basic/mujoco_e3_desktop/README.md)

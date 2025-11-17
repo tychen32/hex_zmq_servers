@@ -15,12 +15,12 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 HEX_ZMQ_SERVERS_DIR = f"{SCRIPT_DIR}/../../../hex_zmq_servers"
 NODE_PARAMS_DICT = {
     # cli
-    "mujoco_archer_d6y_cli": {
-        "name": "mujoco_archer_d6y_cli",
+    "mujoco_archer_y6_cli": {
+        "name": "mujoco_archer_y6_cli",
         "node_path":
-        f"{HEX_ZMQ_SERVERS_DIR}/../examples/basic/mujoco_archer_d6y/cli.py",
+        f"{HEX_ZMQ_SERVERS_DIR}/../examples/basic/mujoco_archer_y6/cli.py",
         "cfg_path":
-        f"{HEX_ZMQ_SERVERS_DIR}/../examples/basic/mujoco_archer_d6y/cli.json",
+        f"{HEX_ZMQ_SERVERS_DIR}/../examples/basic/mujoco_archer_y6/cli.json",
         "cfg": {
             "net": {
                 "ip": "127.0.0.1",
@@ -29,10 +29,10 @@ NODE_PARAMS_DICT = {
         },
     },
     # srv
-    "mujoco_archer_d6y_srv": {
-        "name": "mujoco_archer_d6y_srv",
-        "node_path": HEX_ZMQ_SERVERS_PATH_DICT["mujoco_archer_d6y"],
-        "cfg_path": HEX_ZMQ_CONFIGS_PATH_DICT["mujoco_archer_d6y"],
+    "mujoco_archer_y6_srv": {
+        "name": "mujoco_archer_y6_srv",
+        "node_path": HEX_ZMQ_SERVERS_PATH_DICT["mujoco_archer_y6"],
+        "cfg_path": HEX_ZMQ_CONFIGS_PATH_DICT["mujoco_archer_y6"],
         "cfg": {
             "net": {
                 "ip": "127.0.0.1",

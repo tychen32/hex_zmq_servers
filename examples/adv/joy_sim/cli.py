@@ -15,7 +15,7 @@ from hex_zmq_servers import (
     HexRate,
     HEX_LOG_LEVEL,
     hex_log,
-    HexMujocoArcherD6yClient,
+    HexMujocoArcherY6Client,
 )
 from hex_robo_utils import HexDynUtil as DynUtil
 from hex_robo_utils import quat_mul
@@ -198,7 +198,7 @@ def main():
         missing_key = ke.args[0]
         raise ValueError(f"cfg is not valid, missing key: {missing_key}")
 
-    mujoco_client = HexMujocoArcherD6yClient(net_config=mujoco_net_cfg)
+    mujoco_client = HexMujocoArcherY6Client(net_config=mujoco_net_cfg)
     dyn_util = DynUtil(
         model_path=model_path,
         last_link=last_link,

@@ -25,7 +25,7 @@ ROBOT_CONFIG = {
     "device_ip": "172.18.8.161",
     "device_port": 8439,
     "control_hz": 250,
-    "arm_type": "archer_d6y",
+    "arm_type": "archer_y6",
     "use_gripper": True,
     "mit_kp": [200.0, 200.0, 200.0, 75.0, 15.0, 15.0, 20.0],
     "mit_kd": [12.5, 12.5, 12.5, 6.0, 0.31, 0.31, 1.0],
@@ -33,7 +33,7 @@ ROBOT_CONFIG = {
 }
 
 HEX_DEVICE_TYPE_DICT = {
-    "archer_d6y": 16,
+    "archer_y6": 16,
     "archer_l6y": 17,
 }
 

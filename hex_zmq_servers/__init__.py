@@ -115,17 +115,17 @@ except ImportError:
 # Optional: mujoco
 try:
     from .mujoco import HexMujocoBase, HexMujocoClientBase, HexMujocoServerBase
-    from .mujoco import HexMujocoArcherD6y, HexMujocoArcherD6yClient, HexMujocoArcherD6yServer
+    from .mujoco import HexMujocoArcherY6, HexMujocoArcherY6Client, HexMujocoArcherY6Server
     from .mujoco import HexMujocoE3Desktop, HexMujocoE3DesktopClient, HexMujocoE3DesktopServer
     HEX_ZMQ_SERVERS_PATH_DICT.update({
-        "mujoco_archer_d6y":
-        f"{file_dir}/mujoco/archer_d6y/mujoco_archer_d6y_srv.py",
+        "mujoco_archer_y6":
+        f"{file_dir}/mujoco/archer_y6/mujoco_archer_y6_srv.py",
         "mujoco_e3_desktop":
         f"{file_dir}/mujoco/e3_desktop/mujoco_e3_desktop_srv.py",
     })
     HEX_ZMQ_CONFIGS_PATH_DICT.update({
-        "mujoco_archer_d6y":
-        f"{file_dir}/config/mujoco_archer_d6y.json",
+        "mujoco_archer_y6":
+        f"{file_dir}/config/mujoco_archer_y6.json",
         "mujoco_e3_desktop":
         f"{file_dir}/config/mujoco_e3_desktop.json",
     })
@@ -134,9 +134,9 @@ try:
         "HexMujocoBase",
         "HexMujocoClientBase",
         "HexMujocoServerBase",
-        "HexMujocoArcherD6y",
-        "HexMujocoArcherD6yClient",
-        "HexMujocoArcherD6yServer",
+        "HexMujocoArcherY6",
+        "HexMujocoArcherY6Client",
+        "HexMujocoArcherY6Server",
         "HexMujocoE3Desktop",
         "HexMujocoE3DesktopClient",
         "HexMujocoE3DesktopServer",

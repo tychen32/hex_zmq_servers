@@ -1,4 +1,4 @@
-<mujoco model="archer_d6y scene">
+<mujoco model="archer_y6 scene">
     <compiler angle="radian"/>
     <option integrator="implicitfast"/>
     <option timestep="2e-3"/>

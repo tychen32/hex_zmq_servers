@@ -12,7 +12,7 @@ from hex_zmq_servers import HEX_ZMQ_SERVERS_PATH_DICT, HEX_ZMQ_CONFIGS_PATH_DICT
 from hex_zmq_servers import HEXARM_URDF_PATH_DICT
 
 # robot model config
-ARM_TYPE = "archer_d6y"
+ARM_TYPE = "archer_y6"
 GRIPPER_TYPE = "gp100_p050"
 
 # server ports
@@ -73,10 +73,10 @@ NODE_PARAMS_DICT = {
             },
         },
     },
-    "mujoco_archer_d6y_srv": {
-        "name": "mujoco_archer_d6y_srv",
-        "node_path": HEX_ZMQ_SERVERS_PATH_DICT["mujoco_archer_d6y"],
-        "cfg_path": HEX_ZMQ_CONFIGS_PATH_DICT["mujoco_archer_d6y"],
+    "mujoco_archer_y6_srv": {
+        "name": "mujoco_archer_y6_srv",
+        "node_path": HEX_ZMQ_SERVERS_PATH_DICT["mujoco_archer_y6"],
+        "cfg_path": HEX_ZMQ_CONFIGS_PATH_DICT["mujoco_archer_y6"],
         "cfg": {
             "net": {
                 "port": MUJOCO_SRV_PORT,

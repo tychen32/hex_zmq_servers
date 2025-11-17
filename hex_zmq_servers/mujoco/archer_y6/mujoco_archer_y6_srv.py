@@ -11,7 +11,7 @@ from hex_zmq_servers.zmq_base import HexSafeValue
 
 try:
     from ..mujoco_base import HexMujocoServerBase
-    from .mujoco_archer_d6y import HexMujocoArcherD6y
+    from .mujoco_archer_y6 import HexMujocoArcherY6
 except (ImportError, ValueError):
     import sys
     from pathlib import Path
@@ -20,7 +20,7 @@ except (ImportError, ValueError):
     if str(project_root) not in sys.path:
         sys.path.insert(0, str(project_root))
     from hex_zmq_servers.mujoco.mujoco_base import HexMujocoServerBase
-    from hex_zmq_servers.mujoco.archer_d6y.mujoco_archer_d6y import HexMujocoArcherD6y
+    from hex_zmq_servers.mujoco.archer_y6.mujoco_archer_y6 import HexMujocoArcherY6
 
 NET_CONFIG = {
     "ip": "127.0.0.1",
@@ -38,7 +38,7 @@ MUJOCO_CONFIG = {
 }
 
 
-class HexMujocoArcherD6yServer(HexMujocoServerBase):
+class HexMujocoArcherY6Server(HexMujocoServerBase):
 
     def __init__(
         self,
@@ -48,7 +48,7 @@ class HexMujocoArcherD6yServer(HexMujocoServerBase):
         HexMujocoServerBase.__init__(self, net_config)
 
         # mujoco
-        self._device = HexMujocoArcherD6y(params_config)
+        self._device = HexMujocoArcherY6(params_config)
 
         # values
         self._states_robot_value = HexSafeValue()
@@ -139,4 +139,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     cfg = json.loads(args.cfg)
 
-    hex_server_helper(cfg, HexMujocoArcherD6yServer)
+    hex_server_helper(cfg, HexMujocoArcherY6Server)

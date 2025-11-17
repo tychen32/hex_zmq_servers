@@ -36,7 +36,7 @@ MUJOCO_CONFIG = {
 }
 
 
-class HexMujocoArcherD6y(HexMujocoBase):
+class HexMujocoArcherY6(HexMujocoBase):
 
     def __init__(
         self,
@@ -286,4 +286,4 @@ class HexMujocoArcherD6y(HexMujocoBase):
         self.__depth_cam.close()
         if not self.__headless:
             self.__viewer.close()
-        hex_log(HEX_LOG_LEVEL["info"], "HexMujocoArcherD6y closed")
+        hex_log(HEX_LOG_LEVEL["info"], "HexMujocoArcherY6 closed")
