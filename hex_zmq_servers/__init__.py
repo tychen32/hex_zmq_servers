@@ -78,8 +78,15 @@ __all__ = [
     "HexRobotHexarmServer",
 ]
 
+# Check optional dependencies availability
+from importlib.util import find_spec
+
+_HAS_OPENCV = find_spec("cv2") is not None
+_HAS_BERXEL = find_spec("berxel_py_wrapper") is not None
+_HAS_MUJOCO = find_spec("mujoco") is not None
+
 # Optional: camera
-try:
+if _HAS_OPENCV and _HAS_BERXEL:
     from .cam import HexCamBase, HexCamClientBase, HexCamServerBase
     from .cam import HexCamDummy, HexCamDummyClient, HexCamDummyServer
     from .cam import HexCamBerxel, HexCamBerxelClient, HexCamBerxelServer
@@ -107,13 +114,9 @@ try:
         "HexCamBerxelClient",
         "HexCamBerxelServer",
     ])
-except ImportError:
-    # berxel_py_wrapper not installed
-    # Install with: pip install hex_zmq_servers[berxel] or pip install hex_zmq_servers[all]
-    pass
 
 # Optional: mujoco
-try:
+if _HAS_OPENCV and _HAS_MUJOCO:
     from .mujoco import HexMujocoBase, HexMujocoClientBase, HexMujocoServerBase
     from .mujoco import HexMujocoArcherY6, HexMujocoArcherY6Client, HexMujocoArcherY6Server
     from .mujoco import HexMujocoE3Desktop, HexMujocoE3DesktopClient, HexMujocoE3DesktopServer
@@ -141,9 +144,5 @@ try:
         "HexMujocoE3DesktopClient",
         "HexMujocoE3DesktopServer",
     ])
-except ImportError:
-    # mujoco not installed
-    # Install with: pip install hex_zmq_servers[mujoco] or pip install hex_zmq_servers[all]
-    pass
 
 # print("#### Thanks for using hex_zmq_servers :D ####")
