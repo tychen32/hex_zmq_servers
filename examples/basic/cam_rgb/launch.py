@@ -10,39 +10,45 @@ import os
 from hex_zmq_servers import HexLaunch, HexNodeConfig
 from hex_zmq_servers import HEX_ZMQ_SERVERS_PATH_DICT, HEX_ZMQ_CONFIGS_PATH_DICT
 
+# device config
+# cam 0
+CAM_PATH = "/dev/video0"
+RESOLUTION = [640, 480]
+FRAME_RATE = 30
+SENS_TS = True
+
 # node params
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 HEX_ZMQ_SERVERS_DIR = f"{SCRIPT_DIR}/../../../hex_zmq_servers"
 NODE_PARAMS_DICT = {
     # cli
-    "mujoco_e3_desktop_cli": {
-        "name": "mujoco_e3_desktop_cli",
-        "node_path":
-        f"{HEX_ZMQ_SERVERS_DIR}/../examples/basic/mujoco_e3_desktop/cli.py",
+    "cam_rgb_cli": {
+        "name": "cam_rgb_cli",
+        "node_path": f"{HEX_ZMQ_SERVERS_DIR}/../examples/basic/cam_rgb/cli.py",
         "cfg_path":
-        f"{HEX_ZMQ_SERVERS_DIR}/../examples/basic/mujoco_e3_desktop/cli.json",
+        f"{HEX_ZMQ_SERVERS_DIR}/../examples/basic/cam_rgb/cli.json",
         "cfg": {
             "net": {
                 "ip": "127.0.0.1",
                 "port": 12345,
             },
-        },
+        }
     },
     # srv
-    "mujoco_e3_desktop_srv": {
-        "name": "mujoco_e3_desktop_srv",
-        "node_path": HEX_ZMQ_SERVERS_PATH_DICT["mujoco_e3_desktop"],
-        "cfg_path": HEX_ZMQ_CONFIGS_PATH_DICT["mujoco_e3_desktop"],
+    "cam_rgb_srv": {
+        "name": "cam_rgb_srv",
+        "node_path": HEX_ZMQ_SERVERS_PATH_DICT["cam_rgb"],
+        "cfg_path": HEX_ZMQ_CONFIGS_PATH_DICT["cam_rgb"],
         "cfg": {
             "net": {
                 "ip": "127.0.0.1",
                 "port": 12345,
             },
             "params": {
-                "mit_kp":
-                [1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0],
-                "mit_kd": [20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0],
-                "cam_type": ["rgbd", "rgbd", "rgbd"],
+                "cam_path": CAM_PATH,
+                "resolution": RESOLUTION,
+                "frame_rate": FRAME_RATE,
+                "sens_ts": SENS_TS,
             },
         },
     },

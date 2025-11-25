@@ -87,6 +87,7 @@ NODE_PARAMS_DICT = {
                 "tau_ctrl": False,
                 "mit_kp": [200.0, 200.0, 200.0, 75.0, 15.0, 15.0, 20.0],
                 "mit_kd": [12.5, 12.5, 12.5, 6.0, 0.31, 0.31, 1.0],
+                "cam_type": "rgbd",
                 "headless": False,
                 "sens_ts": True,
             },

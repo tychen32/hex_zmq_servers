@@ -13,7 +13,7 @@ from hex_zmq_servers import (
     hex_zmq_ts_delta_ms,
     HEX_LOG_LEVEL,
     hex_log,
-    HexCamBerxelClient,
+    HexCamRealsenseClient,
 )
 
 import cv2
@@ -99,27 +99,27 @@ def main():
         depth_range = cfg["depth_range"]
         crop = cfg["crop"]
         rotate_type = ROTATE_TYPE[cfg["rotate_type"]]
-        berxel_0_net_cfg = cfg["berxel_0_net_cfg"]
-        berxel_1_net_cfg = cfg["berxel_1_net_cfg"]
-        berxel_2_net_cfg = cfg["berxel_2_net_cfg"]
+        realsense_0_net_cfg = cfg["realsense_0_net_cfg"]
+        realsense_1_net_cfg = cfg["realsense_1_net_cfg"]
+        realsense_2_net_cfg = cfg["realsense_2_net_cfg"]
     except KeyError as ke:
         missing_key = ke.args[0]
         raise ValueError(
-            f"berxel_cam_config is not valid, missing key: {missing_key}")
+            f"realsense_cam_config is not valid, missing key: {missing_key}")
 
-    client_0 = HexCamBerxelClient(net_config=berxel_0_net_cfg)
-    client_1 = HexCamBerxelClient(net_config=berxel_1_net_cfg)
-    client_2 = HexCamBerxelClient(net_config=berxel_2_net_cfg)
+    client_0 = HexCamRealsenseClient(net_config=realsense_0_net_cfg)
+    client_1 = HexCamRealsenseClient(net_config=realsense_1_net_cfg)
+    client_2 = HexCamRealsenseClient(net_config=realsense_2_net_cfg)
 
     # wait servers to work
     if not wait_client_working(client_0):
-        hex_log(HEX_LOG_LEVEL["err"], "berxel_0 is not working")
+        hex_log(HEX_LOG_LEVEL["err"], "realsense_0 is not working")
         return
     if not wait_client_working(client_1):
-        hex_log(HEX_LOG_LEVEL["err"], "berxel_1 is not working")
+        hex_log(HEX_LOG_LEVEL["err"], "realsense_1 is not working")
         return
     if not wait_client_working(client_2):
-        hex_log(HEX_LOG_LEVEL["err"], "berxel_2 is not working")
+        hex_log(HEX_LOG_LEVEL["err"], "realsense_2 is not working")
         return
 
     # get intrinsic params

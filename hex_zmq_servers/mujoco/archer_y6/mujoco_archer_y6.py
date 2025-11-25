@@ -34,6 +34,12 @@ MUJOCO_CONFIG = {
     "headless": False,
     "sens_ts": True,
 }
+CAMERA_CONFIG = {
+    "empty": (False, False),
+    "rgb": (True, False),
+    "berxel": (True, True),
+    "realsense": (True, True),
+}
 
 
 class HexMujocoArcherY6(HexMujocoBase):
@@ -50,6 +56,7 @@ class HexMujocoArcherY6(HexMujocoBase):
             self.__tau_ctrl = mujoco_config["tau_ctrl"]
             self.__mit_kp = mujoco_config["mit_kp"]
             self.__mit_kd = mujoco_config["mit_kd"]
+            self.__cam_type = mujoco_config["cam_type"]
             self.__headless = mujoco_config["headless"]
             self.__sens_ts = mujoco_config["sens_ts"]
         except KeyError as ke:
@@ -95,14 +102,22 @@ class HexMujocoArcherY6(HexMujocoBase):
         self.__states_trig_thresh = int(self.__sim_rate / states_rate)
 
         # camera init
-        width, height = 640, 400
-        fovy_rad = self.__model.cam_fovy[0] * np.pi / 180.0
-        focal = 0.5 * height / np.tan(fovy_rad / 2.0)
-        self._intri = np.array([focal, focal, height / 2, height / 2])
-        self.__rgb_cam = mujoco.Renderer(self.__model, height, width)
-        self.__depth_cam = mujoco.Renderer(self.__model, height, width)
-        self.__depth_cam.enable_depth_rendering()
         self.__img_trig_thresh = int(self.__sim_rate / img_rate)
+        self.__width, self.__height = 640, 400
+        fovy_rad = self.__model.cam_fovy[0] * np.pi / 180.0
+        focal = 0.5 * self.__height / np.tan(fovy_rad / 2.0)
+        self._intri = np.array(
+            [focal, focal, self.__height / 2, self.__height / 2])
+        self.__use_rgb, self.__use_depth = CAMERA_CONFIG.get(
+            self.__cam_type, (False, False))
+        self.__rgb_cam, self.__depth_cam = None, None
+        if self.__use_rgb:
+            self.__rgb_cam = mujoco.Renderer(self.__model, self.__height,
+                                             self.__width)
+        if self.__use_depth:
+            self.__depth_cam = mujoco.Renderer(self.__model, self.__height,
+                                               self.__width)
+            self.__depth_cam.enable_depth_rendering()
 
         # viewer init
         mujoco.mj_forward(self.__model, self.__data)
@@ -138,11 +153,18 @@ class HexMujocoArcherY6(HexMujocoBase):
         last_cmds_robot_seq = -1
         rgb_count = 0
         depth_count = 0
+        cmds_robot = None
 
         rate = HexRate(self.__sim_rate)
         states_trig_count = 0
         img_trig_count = 0
-
+        init_ts = self.__mujoco_ts() if self.__sens_ts else hex_zmq_ts_now()
+        rgb_value.set((init_ts, 0,
+                       np.zeros((self.__height, self.__width, 3),
+                                dtype=np.uint8)))
+        depth_value.set((init_ts, 0,
+                         np.zeros((self.__height, self.__width),
+                                  dtype=np.uint16)))
         while self._working.is_set() and not stop_event.is_set():
             states_trig_count += 1
             if states_trig_count >= self.__states_trig_thresh:
@@ -169,27 +191,31 @@ class HexMujocoArcherY6(HexMujocoBase):
                 # cmds
                 cmds_robot_pack = cmds_robot_value.get(timeout_s=-1.0)
                 if cmds_robot_pack is not None:
-                    ts, seq, cmds = cmds_robot_pack
+                    ts, seq, cmds_robot_get = cmds_robot_pack
                     if seq != last_cmds_robot_seq:
                         last_cmds_robot_seq = seq
                         if hex_zmq_ts_delta_ms(hex_zmq_ts_now(), ts) < 200.0:
-                            self.__set_cmds(cmds)
+                            cmds_robot = cmds_robot_get.copy()
+                if cmds_robot is not None:
+                    self.__set_cmds(cmds_robot)
 
             img_trig_count += 1
             if img_trig_count >= self.__img_trig_thresh:
                 img_trig_count = 0
 
                 # rgb
-                ts, rgb_img = self.__get_rgb()
-                if rgb_img is not None:
-                    rgb_value.set((ts, rgb_count, rgb_img))
-                    rgb_count = (rgb_count + 1) % self._max_seq_num
+                if self.__use_rgb:
+                    ts, rgb_img = self.__get_rgb()
+                    if rgb_img is not None:
+                        rgb_value.set((ts, rgb_count, rgb_img))
+                        rgb_count = (rgb_count + 1) % self._max_seq_num
 
                 # depth
-                ts, depth_img = self.__get_depth()
-                if depth_img is not None:
-                    depth_value.set((ts, depth_count, depth_img))
-                    depth_count = (depth_count + 1) % self._max_seq_num
+                if self.__use_depth:
+                    ts, depth_img = self.__get_depth()
+                    if depth_img is not None:
+                        depth_value.set((ts, depth_count, depth_img))
+                        depth_count = (depth_count + 1) % self._max_seq_num
 
             # mujoco step
             mujoco.mj_step(self.__model, self.__data)
@@ -236,7 +262,8 @@ class HexMujocoArcherY6(HexMujocoBase):
                     cmd_kp = cmds[:, 3].copy()
                     cmd_kd = cmds[:, 4].copy()
                 else:
-                    raise ValueError(f"The shape of cmds is invalid: {cmds.shape}")
+                    raise ValueError(
+                        f"The shape of cmds is invalid: {cmds.shape}")
             else:
                 raise ValueError(f"The shape of cmds is invalid: {cmds.shape}")
             tar_pos = self._apply_pos_limits(
@@ -282,8 +309,10 @@ class HexMujocoArcherY6(HexMujocoBase):
         if not self._working.is_set():
             return
         self._working.clear()
-        self.__rgb_cam.close()
-        self.__depth_cam.close()
+        if self.__rgb_cam is not None:
+            self.__rgb_cam.close()
+        if self.__depth_cam is not None:
+            self.__depth_cam.close()
         if not self.__headless:
             self.__viewer.close()
         hex_log(HEX_LOG_LEVEL["info"], "HexMujocoArcherY6 closed")

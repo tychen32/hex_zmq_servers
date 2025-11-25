@@ -13,10 +13,17 @@ from hex_zmq_servers import (
     hex_zmq_ts_delta_ms,
     HEX_LOG_LEVEL,
     hex_log,
-    HexCamDummyClient,
+    HexCamRGBClient,
 )
 
 import cv2
+
+ROTATE_TYPE = [
+    None,
+    cv2.ROTATE_90_CLOCKWISE,
+    cv2.ROTATE_180,
+    cv2.ROTATE_90_COUNTERCLOCKWISE,
+]
 
 
 def main():
@@ -27,14 +34,15 @@ def main():
 
     try:
         net_config = cfg["net"]
+        rotate_type = ROTATE_TYPE[cfg["rotate_type"]]
     except KeyError as ke:
         missing_key = ke.args[0]
         raise ValueError(
-            f"dummy_cam_config is not valid, missing key: {missing_key}")
+            f"cam_rgb_config is not valid, missing key: {missing_key}")
 
     # wait for camera to work
-    client = HexCamDummyClient(net_config=net_config)
-    for i in range(3):
+    client = HexCamRGBClient(net_config=net_config)
+    for i in range(30):
         hex_log(HEX_LOG_LEVEL["info"],
                 f"waiting for camera to work: {i * 0.5}s")
         if client.is_working():
@@ -42,6 +50,11 @@ def main():
         else:
             time.sleep(0.5)
 
+    # get intrinsic params
+    _, intri = client.get_intri()
+    hex_log(HEX_LOG_LEVEL["info"], f"intri: {intri}")
+
+    # get rgb and depth
     rate = HexRate(200)
     try:
         while True:
@@ -52,16 +65,9 @@ def main():
                     HEX_LOG_LEVEL["info"],
                     f"rgb_seq: {rgb_hdr['args']}; delay: {hex_zmq_ts_delta_ms(curr_ts, rgb_hdr['ts'])}ms"
                 )
+                if rotate_type is not None:
+                    rgb_img = cv2.rotate(rgb_img, rotate_type)
                 cv2.imshow("rgb_img", rgb_img)
-
-            depth_hdr, depth_img = client.get_depth()
-            if depth_hdr is not None:
-                curr_ts = hex_zmq_ts_now()
-                hex_log(
-                    HEX_LOG_LEVEL["info"],
-                    f"depth_seq: {depth_hdr['args']}; delay: {hex_zmq_ts_delta_ms(curr_ts, depth_hdr['ts'])}ms"
-                )
-                cv2.imshow("depth_img", depth_img)
 
             key = cv2.waitKey(1)
             if key == ord('q'):

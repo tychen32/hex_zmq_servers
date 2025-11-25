@@ -63,6 +63,7 @@ def main():
         while True:
             depth_hdr, depth_img = client.get_depth()
             if depth_hdr is not None:
+                print("get depth frame")
                 curr_ts = hex_zmq_ts_now()
                 hex_log(
                     HEX_LOG_LEVEL["info"],
@@ -87,6 +88,7 @@ def main():
 
             rgb_hdr, rgb_img = client.get_rgb()
             if rgb_hdr is not None:
+                print("get rgb frame")
                 curr_ts = hex_zmq_ts_now()
                 hex_log(
                     HEX_LOG_LEVEL["info"],

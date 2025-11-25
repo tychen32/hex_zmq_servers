@@ -28,6 +28,7 @@
             0.31,
             1.0
         ],
+        "cam_type": "empty",
         "headless": false,
         "sens_ts": true
     }

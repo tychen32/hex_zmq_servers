@@ -18,6 +18,10 @@ from .robot import HexRobotDummy, HexRobotDummyClient, HexRobotDummyServer
 from .robot import HexRobotGello, HexRobotGelloClient, HexRobotGelloServer
 from .robot import HexRobotHexarm, HexRobotHexarmClient, HexRobotHexarmServer, HEXARM_URDF_PATH_DICT
 
+from .cam import HexCamBase, HexCamClientBase, HexCamServerBase
+from .cam import HexCamDummy, HexCamDummyClient, HexCamDummyServer
+from .cam import HexCamRGB, HexCamRGBClient, HexCamRGBServer
+
 import os
 
 file_dir = os.path.dirname(os.path.abspath(__file__))
@@ -26,12 +30,16 @@ HEX_ZMQ_SERVERS_PATH_DICT = {
     "robot_dummy": f"{file_dir}/robot/dummy/robot_dummy_srv.py",
     "robot_gello": f"{file_dir}/robot/gello/robot_gello_srv.py",
     "robot_hexarm": f"{file_dir}/robot/hexarm/robot_hexarm_srv.py",
+    "cam_dummy": f"{file_dir}/cam/dummy/cam_dummy_srv.py",
+    "cam_rgb": f"{file_dir}/cam/rgb/cam_rgb_srv.py",
 }
 HEX_ZMQ_CONFIGS_PATH_DICT = {
     "zmq_dummy": f"{file_dir}/config/zmq_dummy.json",
     "robot_dummy": f"{file_dir}/config/robot_dummy.json",
     "robot_gello": f"{file_dir}/config/robot_gello.json",
     "robot_hexarm": f"{file_dir}/config/robot_hexarm.json",
+    "cam_dummy": f"{file_dir}/config/cam_dummy.json",
+    "cam_rgb": f"{file_dir}/config/cam_rgb.json",
 }
 
 __all__ = [
@@ -76,47 +84,62 @@ __all__ = [
     "HexRobotHexarm",
     "HexRobotHexarmClient",
     "HexRobotHexarmServer",
+
+    # camera
+    "HexCamBase",
+    "HexCamClientBase",
+    "HexCamServerBase",
+    "HexCamDummy",
+    "HexCamDummyClient",
+    "HexCamDummyServer",
+    "HexCamRGB",
+    "HexCamRGBClient",
+    "HexCamRGBServer",
 ]
 
 # Check optional dependencies availability
 from importlib.util import find_spec
 
-_HAS_OPENCV = find_spec("cv2") is not None
 _HAS_BERXEL = find_spec("berxel_py_wrapper") is not None
+_HAS_REALSENSE = find_spec("pyrealsense2") is not None
 _HAS_MUJOCO = find_spec("mujoco") is not None
 
-# Optional: camera
-if _HAS_OPENCV and _HAS_BERXEL:
-    from .cam import HexCamBase, HexCamClientBase, HexCamServerBase
-    from .cam import HexCamDummy, HexCamDummyClient, HexCamDummyServer
+# Optional: berxel
+if _HAS_BERXEL:
     from .cam import HexCamBerxel, HexCamBerxelClient, HexCamBerxelServer
     HEX_ZMQ_SERVERS_PATH_DICT.update({
-        "cam_dummy":
-        f"{file_dir}/cam/dummy/cam_dummy_srv.py",
         "cam_berxel":
         f"{file_dir}/cam/berxel/cam_berxel_srv.py",
     })
     HEX_ZMQ_CONFIGS_PATH_DICT.update({
-        "cam_dummy":
-        f"{file_dir}/config/cam_dummy.json",
         "cam_berxel":
         f"{file_dir}/config/cam_berxel.json",
     })
     __all__.extend([
-        # camera
-        "HexCamBase",
-        "HexCamClientBase",
-        "HexCamServerBase",
-        "HexCamDummy",
-        "HexCamDummyClient",
-        "HexCamDummyServer",
         "HexCamBerxel",
         "HexCamBerxelClient",
         "HexCamBerxelServer",
     ])
 
+# Optional: realsense
+if _HAS_REALSENSE:
+    from .cam import HexCamRealsense, HexCamRealsenseClient, HexCamRealsenseServer
+    HEX_ZMQ_SERVERS_PATH_DICT.update({
+        "cam_realsense":
+        f"{file_dir}/cam/realsense/cam_realsense_srv.py",
+    })
+    HEX_ZMQ_CONFIGS_PATH_DICT.update({
+        "cam_realsense":
+        f"{file_dir}/config/cam_realsense.json",
+    })
+    __all__.extend([
+        "HexCamRealsense",
+        "HexCamRealsenseClient",
+        "HexCamRealsenseServer",
+    ])
+
 # Optional: mujoco
-if _HAS_OPENCV and _HAS_MUJOCO:
+if _HAS_MUJOCO:
     from .mujoco import HexMujocoBase, HexMujocoClientBase, HexMujocoServerBase
     from .mujoco import HexMujocoArcherY6, HexMujocoArcherY6Client, HexMujocoArcherY6Server
     from .mujoco import HexMujocoE3Desktop, HexMujocoE3DesktopClient, HexMujocoE3DesktopServer

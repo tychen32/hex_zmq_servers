@@ -6,22 +6,29 @@ This directory contains the example code of `hex_zmq_servers`, showing how to us
 
 ```bash
 examples/
-├── basic/                  # Basic examples (single device)
-│   ├── robot_dummy/        # Dummy robot
-│   ├── robot_gello/        # GELLO robot
-│   ├── robot_hexarm/       # HexArm robot
-│   ├── cam_dummy/          # Dummy camera
-│   ├── cam_berxel/         # Berxel depth camera
-│   ├── mujoco_archer_y6/   # Archer Y6 simulation
-│   ├── mujoco_e3_desktop/  # E3 Desktop simulation
-│   └── zmq_dummy/          # ZMQ communication test
-└── adv/                    # Advanced examples (multi-device coordination)
-    ├── gello_sim/          # GELLO + Mujoco simulation teleoperation
-    ├── gello_real/         # GELLO + real robot teleoperation
-    ├── joy_sim/            # Joystick + Mujoco simulation control
-    ├── joy_real/           # Joystick + real robot control
-    ├── force_feedback/     # Force feedback teleoperation
-    └── zero_gravity/       # Zero gravity test
+├── basic/                      # Basic examples (single device)
+│   ├── robot_dummy/            # Dummy robot
+│   ├── robot_gello/            # GELLO robot
+│   ├── robot_hexarm/           # HexArm robot
+│   ├── cam_dummy/              # Dummy camera
+│   ├── cam_rgb/                # RGB camera
+│   ├── cam_berxel/             # Berxel RGB-D camera
+│   ├── cam_realsense/          # Realsense RGB-D camera
+│   ├── mujoco_archer_y6/       # Archer Y6 simulation
+│   ├── mujoco_e3_desktop/      # E3 Desktop simulation
+│   └── zmq_dummy/              # ZMQ communication test
+└── adv/                        # Advanced examples (multi-device coordination)
+    ├── gello_sim/              # GELLO + Mujoco simulation teleoperation
+    ├── gello_real/             # GELLO + real robot teleoperation
+    ├── joy_sim/                # Joystick + Mujoco simulation control
+    ├── joy_real/               # Joystick + real robot control
+    ├── force_feedback/         # Force feedback teleoperation
+    ├── zero_gravity/           # Zero gravity test
+    ├── multi_berxel/           # Multi Berxel example
+    ├── multi_realsense/        # Multi Realsense example
+    ├── multi_launch/           # Multi launch example
+    ├── multi_launch_berxel/    # Multi launch Berxel example
+    └── multi_launch_realsense/ # Multi launch Realsense example
 ```
 
 ## Example Categories
@@ -40,9 +47,15 @@ examples/
 - **cam_dummy**
   - Description: Dummy camera example, showing how to use camera device.
   - [Details](basic/cam_dummy/README.md)
+- **cam_rgb**
+  - Description: RGB camera example, showing how to use RGB camera.
+  - [Details](basic/cam_rgb/README.md)
 - **cam_berxel**
   - Description: Berxel depth camera example, showing how to use Berxel RGB-D camera.
   - [Details](basic/cam_berxel/README.md)
+- **cam_realsense**
+  - Description: Realsense RGB-D camera example, showing how to use Realsense RGB-D camera.
+  - [Details](basic/cam_realsense/README.md)
 - **mujoco_archer_y6**
   - Description: Archer Y6 simulation example, showing how to use Archer Y6 simulation.
   - [Details](basic/mujoco_archer_y6/README.md)
@@ -76,6 +89,15 @@ examples/
 - **multi_berxel**
   - Description: Multi Berxel example, showing how to use multiple Berxel RGB-D camera devices.
   - [Details](adv/multi_berxel/README.md)
+- **multi_realsense**
+  - Description: Multi Realsense example, showing how to use multiple Realsense RGB-D camera devices.
+  - [Details](adv/multi_realsense/README.md)
 - **multi_launch**
   - Description: Multi launch example, showing how to use multiple launch files.
   - [Details](adv/multi_launch/README.md)
+- **multi_launch_berxel**
+  - Description: Multi launch Berxel example, showing how to use multiple launch files to start multiple Berxel RGB-D camera devices.
+  - [Details](adv/multi_launch_berxel/README.md)
+- **multi_launch_realsense**
+  - Description: Multi launch Realsense example, showing how to use multiple launch files to start multiple Realsense RGB-D camera devices.
+  - [Details](adv/multi_launch_realsense/README.md)

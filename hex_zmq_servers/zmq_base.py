@@ -171,9 +171,12 @@ class HexZMQClientBase(ABC):
                 self.__make_socket()
             return resp_hdr, resp_buf
 
-    def is_working(self):
+    def is_working(self) -> bool:
         working_hdr, _ = self.request({"cmd": "is_working"})
-        return working_hdr
+        if working_hdr is None:
+            return False
+        else:
+            return working_hdr["cmd"] == "is_working_ok"
 
     def __send_req(self, req_dict: dict, req_buf: np.ndarray | None = None):
         # construct send header

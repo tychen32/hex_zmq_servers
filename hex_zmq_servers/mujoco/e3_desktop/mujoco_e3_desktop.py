@@ -31,8 +31,15 @@ MUJOCO_CONFIG = {
     "tau_ctrl": False,
     "mit_kp": [200.0, 200.0, 200.0, 75.0, 15.0, 15.0, 20.0],
     "mit_kd": [12.5, 12.5, 12.5, 6.0, 0.31, 0.31, 1.0],
+    "cam_type": ["empty", "empty", "empty"],
     "headless": False,
     "sens_ts": True,
+}
+CAMERA_CONFIG = {
+    "empty": (False, False),
+    "rgb": (True, False),
+    "berxel": (True, True),
+    "realsense": (True, True),
 }
 
 
@@ -50,6 +57,7 @@ class HexMujocoE3Desktop(HexMujocoBase):
             self.__tau_ctrl = mujoco_config["tau_ctrl"]
             self.__mit_kp = mujoco_config["mit_kp"]
             self.__mit_kd = mujoco_config["mit_kd"]
+            self.__cam_type = mujoco_config["cam_type"]
             self.__headless = mujoco_config["headless"]
             self.__sens_ts = mujoco_config["sens_ts"]
         except KeyError as ke:
@@ -103,22 +111,35 @@ class HexMujocoE3Desktop(HexMujocoBase):
         self.__states_trig_thresh = int(self.__sim_rate / states_rate)
 
         # camera init
-        width, height = 640, 400
+        self.__img_trig_thresh = int(self.__sim_rate / img_rate)
+        self.__width, self.__height = (640, 480)
         head_fovy_rad = self.__model.cam_fovy[0] * np.pi / 180.0
         left_fovy_rad = self.__model.cam_fovy[1] * np.pi / 180.0
         right_fovy_rad = self.__model.cam_fovy[2] * np.pi / 180.0
-        head_focal = 0.5 * height / np.tan(head_fovy_rad / 2.0)
-        left_focal = 0.5 * height / np.tan(left_fovy_rad / 2.0)
-        right_focal = 0.5 * height / np.tan(right_fovy_rad / 2.0)
+        head_focal = 0.5 * self.__height / np.tan(head_fovy_rad / 2.0)
+        left_focal = 0.5 * self.__height / np.tan(left_fovy_rad / 2.0)
+        right_focal = 0.5 * self.__height / np.tan(right_fovy_rad / 2.0)
         self._intri = np.array([
-            [head_focal, head_focal, height / 2, height / 2],
-            [left_focal, left_focal, height / 2, height / 2],
-            [right_focal, right_focal, height / 2, height / 2],
+            [head_focal, head_focal, self.__height / 2, self.__height / 2],
+            [left_focal, left_focal, self.__height / 2, self.__height / 2],
+            [right_focal, right_focal, self.__height / 2, self.__height / 2],
         ])
-        self.__rgb_cam = mujoco.Renderer(self.__model, height, width)
-        self.__depth_cam = mujoco.Renderer(self.__model, height, width)
-        self.__depth_cam.enable_depth_rendering()
-        self.__img_trig_thresh = int(self.__sim_rate / img_rate)
+        self.__head_rgb, self.__head_depth = CAMERA_CONFIG.get(
+            self.__cam_type[0], (False, False))
+        self.__left_rgb, self.__left_depth = CAMERA_CONFIG.get(
+            self.__cam_type[1], (False, False))
+        self.__right_rgb, self.__right_depth = CAMERA_CONFIG.get(
+            self.__cam_type[2], (False, False))
+        self.__rgb_cam, self.__depth_cam = None, None
+        has_rgb = self.__left_rgb or self.__right_rgb or self.__head_rgb
+        has_depth = self.__left_depth or self.__right_depth or self.__head_depth
+        if has_rgb:
+            self.__rgb_cam = mujoco.Renderer(self.__model, self.__height,
+                                             self.__width)
+        if has_depth:
+            self.__depth_cam = mujoco.Renderer(self.__model, self.__height,
+                                               self.__width)
+            self.__depth_cam.enable_depth_rendering()
 
         # viewer init
         mujoco.mj_forward(self.__model, self.__data)
@@ -166,10 +187,31 @@ class HexMujocoE3Desktop(HexMujocoBase):
         left_depth_count = 0
         right_rgb_count = 0
         right_depth_count = 0
+        cmds_left = None
+        cmds_right = None
 
         rate = HexRate(self.__sim_rate)
         states_trig_count = 0
         img_trig_count = 0
+        init_ts = self.__mujoco_ts() if self.__sens_ts else hex_zmq_ts_now()
+        head_rgb_value.set((init_ts, 0,
+                            np.zeros((self.__height, self.__width, 3),
+                                     dtype=np.uint8)))
+        head_depth_value.set((init_ts, 0,
+                              np.zeros((self.__height, self.__width),
+                                       dtype=np.uint16)))
+        left_rgb_value.set((init_ts, 0,
+                            np.zeros((self.__height, self.__width, 3),
+                                     dtype=np.uint8)))
+        left_depth_value.set((init_ts, 0,
+                              np.zeros((self.__height, self.__width),
+                                       dtype=np.uint16)))
+        right_rgb_value.set((init_ts, 0,
+                             np.zeros((self.__height, self.__width, 3),
+                                      dtype=np.uint8)))
+        right_depth_value.set((init_ts, 0,
+                               np.zeros((self.__height, self.__width),
+                                        dtype=np.uint16)))
         while self._working.is_set() and not stop_event.is_set():
             states_trig_count += 1
             if states_trig_count >= self.__states_trig_thresh:
@@ -199,62 +241,76 @@ class HexMujocoE3Desktop(HexMujocoBase):
                 # cmds
                 cmds_left_pack = cmds_left_value.get(timeout_s=-1.0)
                 if cmds_left_pack is not None:
-                    ts, seq, cmds_left = cmds_left_pack
+                    ts, seq, cmds_left_get = cmds_left_pack
                     if seq != last_cmds_left_seq:
                         last_cmds_left_seq = seq
                         if hex_zmq_ts_delta_ms(hex_zmq_ts_now(), ts) < 200.0:
-                            self.__set_cmds(cmds_left, "left")
+                            cmds_left = cmds_left_get.copy()
+                if cmds_left is not None:
+                    self.__set_cmds(cmds_left, "left")
 
                 cmds_right_pack = cmds_right_value.get(timeout_s=-1.0)
                 if cmds_right_pack is not None:
-                    ts, seq, cmds_right = cmds_right_pack
+                    ts, seq, cmds_right_get = cmds_right_pack
                     if seq != last_cmds_right_seq:
                         last_cmds_right_seq = seq
                         if hex_zmq_ts_delta_ms(hex_zmq_ts_now(), ts) < 200.0:
-                            self.__set_cmds(cmds_right, "right")
+                            cmds_right = cmds_right_get.copy()
+                if cmds_right is not None:
+                    self.__set_cmds(cmds_right, "right")
 
             img_trig_count += 1
             if img_trig_count >= self.__img_trig_thresh:
                 img_trig_count = 0
 
                 # head rgb
-                ts, rgb_img = self.__get_rgb("head_camera")
-                if rgb_img is not None:
-                    head_rgb_value.set((ts, head_rgb_count, rgb_img))
-                    head_rgb_count = (head_rgb_count + 1) % self._max_seq_num
+                if self.__head_rgb:
+                    ts, rgb_img = self.__get_rgb("head_camera")
+                    if rgb_img is not None:
+                        head_rgb_value.set((ts, head_rgb_count, rgb_img))
+                        head_rgb_count = (head_rgb_count +
+                                          1) % self._max_seq_num
 
                 # head depth
-                ts, depth_img = self.__get_depth("head_camera")
-                if depth_img is not None:
-                    head_depth_value.set((ts, head_depth_count, depth_img))
-                    head_depth_count = (head_depth_count +
-                                        1) % self._max_seq_num
+                if self.__head_depth:
+                    ts, depth_img = self.__get_depth("head_camera")
+                    if depth_img is not None:
+                        head_depth_value.set((ts, head_depth_count, depth_img))
+                        head_depth_count = (head_depth_count +
+                                            1) % self._max_seq_num
 
                 # left rgb
-                ts, rgb_img = self.__get_rgb("left_camera")
-                if rgb_img is not None:
-                    left_rgb_value.set((ts, left_rgb_count, rgb_img))
-                    left_rgb_count = (left_rgb_count + 1) % self._max_seq_num
+                if self.__left_rgb:
+                    ts, rgb_img = self.__get_rgb("left_camera")
+                    if rgb_img is not None:
+                        left_rgb_value.set((ts, left_rgb_count, rgb_img))
+                        left_rgb_count = (left_rgb_count +
+                                          1) % self._max_seq_num
 
                 # left depth
-                ts, depth_img = self.__get_depth("left_camera")
-                if depth_img is not None:
-                    left_depth_value.set((ts, left_depth_count, depth_img))
-                    left_depth_count = (left_depth_count +
-                                        1) % self._max_seq_num
+                if self.__left_depth:
+                    ts, depth_img = self.__get_depth("left_camera")
+                    if depth_img is not None:
+                        left_depth_value.set((ts, left_depth_count, depth_img))
+                        left_depth_count = (left_depth_count +
+                                            1) % self._max_seq_num
 
                 # right rgb
-                ts, rgb_img = self.__get_rgb("right_camera")
-                if rgb_img is not None:
-                    right_rgb_value.set((ts, right_rgb_count, rgb_img))
-                    right_rgb_count = (right_rgb_count + 1) % self._max_seq_num
+                if self.__right_rgb:
+                    ts, rgb_img = self.__get_rgb("right_camera")
+                    if rgb_img is not None:
+                        right_rgb_value.set((ts, right_rgb_count, rgb_img))
+                        right_rgb_count = (right_rgb_count +
+                                           1) % self._max_seq_num
 
                 # right depth
-                ts, depth_img = self.__get_depth("right_camera")
-                if depth_img is not None:
-                    right_depth_value.set((ts, right_depth_count, depth_img))
-                    right_depth_count = (right_depth_count +
-                                         1) % self._max_seq_num
+                if self.__right_depth:
+                    ts, depth_img = self.__get_depth("right_camera")
+                    if depth_img is not None:
+                        right_depth_value.set(
+                            (ts, right_depth_count, depth_img))
+                        right_depth_count = (right_depth_count +
+                                             1) % self._max_seq_num
 
             # mujoco step
             mujoco.mj_step(self.__model, self.__data)
@@ -369,8 +425,10 @@ class HexMujocoE3Desktop(HexMujocoBase):
         if not self._working.is_set():
             return
         self._working.clear()
-        self.__rgb_cam.close()
-        self.__depth_cam.close()
+        if self.__rgb_cam is not None:
+            self.__rgb_cam.close()
+        if self.__depth_cam is not None:
+            self.__depth_cam.close()
         if not self.__headless:
             self.__viewer.close()
         hex_log(HEX_LOG_LEVEL["info"], "HexMujocoE3Desktop closed")
