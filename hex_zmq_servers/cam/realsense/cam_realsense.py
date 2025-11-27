@@ -109,7 +109,7 @@ class HexCamRealsense(HexCamBase):
         stop_event = hex_values[2]
 
         frames = self.__pipeline.wait_for_frames()
-        bias_ns = np.int64(time.time_ns()) - np.int64(
+        bias_ns = np.int64(time.perf_counter_ns()) - np.int64(
             frames.get_frame_metadata(rs.frame_metadata_value.sensor_timestamp)
             * 1_000)
 

@@ -12,6 +12,8 @@
             640,
             480
         ],
+        "exposure": 70,
+        "temperature": 0,
         "frame_rate": 30,
         "sens_ts": true
     }

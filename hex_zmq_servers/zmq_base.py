@@ -22,7 +22,7 @@ MAX_SEQ_NUM = int(1e12)
 
 
 def hex_zmq_ts_now() -> dict:
-    t_ns = time.time_ns()
+    t_ns = time.perf_counter_ns()
     return {
         "s": t_ns // 1_000_000_000,
         "ns": t_ns % 1_000_000_000,

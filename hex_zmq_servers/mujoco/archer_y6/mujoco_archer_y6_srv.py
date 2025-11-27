@@ -31,7 +31,7 @@ NET_CONFIG = {
 }
 
 MUJOCO_CONFIG = {
-    "states_rate": 500,
+    "states_rate": 1000,
     "img_rate": 30,
     "headless": False,
     "sens_ts": True,

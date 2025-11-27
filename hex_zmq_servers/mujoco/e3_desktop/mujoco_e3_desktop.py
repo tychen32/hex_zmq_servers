@@ -26,7 +26,7 @@ from ...hex_launch import hex_log, HEX_LOG_LEVEL
 from hex_robo_utils import HexCtrlUtilMitJoint as CtrlUtil
 
 MUJOCO_CONFIG = {
-    "states_rate": 500,
+    "states_rate": 1000,
     "img_rate": 30,
     "tau_ctrl": False,
     "mit_kp": [200.0, 200.0, 200.0, 75.0, 15.0, 15.0, 20.0],
@@ -220,7 +220,7 @@ class HexMujocoE3Desktop(HexMujocoBase):
                 # states
                 ts, states_left, states_right, states_obj = self.__get_states()
                 if states_left is not None:
-                    if hex_zmq_ts_delta_ms(ts, last_states_ts) > 1.0:
+                    if hex_zmq_ts_delta_ms(ts, last_states_ts) > 1e-6:
                         last_states_ts = ts
                         # states left
                         states_left_value.set(

@@ -6,6 +6,7 @@
 # Date  : 2025-09-14
 ################################################################
 
+import platform
 import cv2
 import threading
 import numpy as np
@@ -21,6 +22,8 @@ from ...hex_launch import hex_log, HEX_LOG_LEVEL
 CAMERA_CONFIG = {
     "cam_path": "/dev/video0",
     "resolution": [640, 480],
+    "exposure": 100,
+    "temperature": 4000,
     "frame_rate": 30,
     "sens_ts": True,
 }
@@ -37,6 +40,8 @@ class HexCamRGB(HexCamBase):
         try:
             self.__cam_path = camera_config["cam_path"]
             self.__resolution = camera_config["resolution"]
+            self.__exposure = camera_config["exposure"]
+            self.__temperature = camera_config["temperature"]
             self.__frame_rate = camera_config["frame_rate"]
             self.__sens_ts = camera_config["sens_ts"]
         except KeyError as ke:
@@ -55,6 +60,17 @@ class HexCamRGB(HexCamBase):
         self.__cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.__resolution[0])
         self.__cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.__resolution[1])
         self.__cap.set(cv2.CAP_PROP_FPS, self.__frame_rate)
+        ae_open = 1.0 if platform.system() == "Windows" else 3.0
+        ae_close = 0.0 if platform.system() == "Windows" else 1.0
+        ae_value = 10000*(2**self.__exposure) if platform.system() == "Windows" else self.__exposure
+        self.__cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, ae_open)
+        if self.__exposure != 0:
+            self.__cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, ae_close)
+            self.__cap.set(cv2.CAP_PROP_EXPOSURE, ae_value)
+        self.__cap.set(cv2.CAP_PROP_AUTO_WB, 1)
+        if self.__temperature != 0:
+            self.__cap.set(cv2.CAP_PROP_AUTO_WB, 0)
+            self.__cap.set(cv2.CAP_PROP_WB_TEMPERATURE, self.__temperature)
 
         print("#############################")
         print(
@@ -66,6 +82,10 @@ class HexCamRGB(HexCamBase):
             (four_cc_int >> 8) & 0xff) + chr((four_cc_int >> 16) & 0xff) + chr(
                 (four_cc_int >> 24) & 0xff)
         print(f"# FourCC: {four_cc_str}")
+        print(f"# Auto Exposure: {self.__cap.get(cv2.CAP_PROP_AUTO_EXPOSURE)}")
+        print(f"# Exposure: {self.__cap.get(cv2.CAP_PROP_EXPOSURE)}")
+        print(f"# Auto WB: {self.__cap.get(cv2.CAP_PROP_AUTO_WB)}")
+        print(f"# WB Temperature: {self.__cap.get(cv2.CAP_PROP_WB_TEMPERATURE)}")
         print("#############################")
 
         # start work loop

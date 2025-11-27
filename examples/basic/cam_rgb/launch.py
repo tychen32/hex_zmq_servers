@@ -14,6 +14,8 @@ from hex_zmq_servers import HEX_ZMQ_SERVERS_PATH_DICT, HEX_ZMQ_CONFIGS_PATH_DICT
 # cam 0
 CAM_PATH = "/dev/video0"
 RESOLUTION = [640, 480]
+EXPOSURE = 70
+TEMPERATURE = 0
 FRAME_RATE = 30
 SENS_TS = True
 
@@ -47,6 +49,8 @@ NODE_PARAMS_DICT = {
             "params": {
                 "cam_path": CAM_PATH,
                 "resolution": RESOLUTION,
+                "exposure": EXPOSURE,
+                "temperature": TEMPERATURE,
                 "frame_rate": FRAME_RATE,
                 "sens_ts": SENS_TS,
             },

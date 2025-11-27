@@ -9,7 +9,7 @@
     "params": {
         "device_ip": "172.18.8.161",
         "device_port": 8439,
-        "control_hz": 500,
+        "control_hz": 1000,
         "arm_type": "archer_l6y",
         "use_gripper": true,
         "mit_kp": [

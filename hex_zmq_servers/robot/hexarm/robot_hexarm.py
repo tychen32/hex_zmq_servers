@@ -73,6 +73,10 @@ class HexRobotHexarm(HexRobotBase):
         self.__arm_archer: MotorBase | None = None
         self.__gripper: MotorBase | None = None
 
+        # buffer
+        self.__arm_state_buffer: dict | None = None
+        self.__gripper_state_buffer: dict | None = None
+
         # open device
         self.__hex_api = HexDeviceApi(
             ws_url=f"ws://{device_ip}:{device_port}",
@@ -130,12 +134,12 @@ class HexRobotHexarm(HexRobotBase):
         last_states_ts = hex_zmq_ts_now()
         states_count = 0
         last_cmds_seq = -1
-        rate = HexRate(1000)
+        rate = HexRate(2000)
         while self._working.is_set() and not stop_event.is_set():
             # states
             ts, states = self.__get_states()
             if states is not None:
-                if hex_zmq_ts_delta_ms(ts, last_states_ts) > 1.0:
+                if hex_zmq_ts_delta_ms(ts, last_states_ts) > 1e-6:
                     last_states_ts = ts
                     states_value.set((ts, states_count, states))
                     states_count = (states_count + 1) % self._max_seq_num
@@ -160,22 +164,44 @@ class HexRobotHexarm(HexRobotBase):
             return None, None
 
         # (arm_dofs, 3) # pos vel eff
-        arm_states_dict = self.__arm_archer.get_simple_motor_status()
-        pos = arm_states_dict['pos']
-        vel = arm_states_dict['vel']
-        eff = arm_states_dict['eff']
-        ts = arm_states_dict['ts']
+        if self.__arm_state_buffer is None:
+            self.__arm_state_buffer = self.__arm_archer.get_simple_motor_status(
+            )
 
         # (gripper_dofs, 3) # pos vel eff
-        if self.__gripper is not None:
-            gripper_states_dict = self.__gripper.get_simple_motor_status()
-            pos += gripper_states_dict['pos']
-            vel += gripper_states_dict['vel']
-            eff += gripper_states_dict['eff']
+        if self.__gripper is not None and self.__gripper_state_buffer is None:
+            self.__gripper_state_buffer = self.__gripper.get_simple_motor_status(
+            )
 
-        pos, vel, eff = np.asarray(pos), np.asarray(vel), np.asarray(eff)
-        return ts if self.__sens_ts else hex_zmq_ts_now(), np.array(
-            [pos, vel, eff]).T
+        arm_ready = self.__arm_state_buffer is not None
+        gripper_ready = self.__gripper is None or self.__gripper_state_buffer is not None
+        if arm_ready and gripper_ready:
+            arm_ts = self.__arm_state_buffer['ts']
+            gripper_ts = self.__gripper_state_buffer[
+                'ts'] if self.__gripper is not None else arm_ts
+
+            delta_ms = hex_zmq_ts_delta_ms(arm_ts, gripper_ts)
+            if np.fabs(delta_ms) < 1e-6:
+                pos = self.__arm_state_buffer['pos']
+                vel = self.__arm_state_buffer['vel']
+                eff = self.__arm_state_buffer['eff']
+
+                if self.__gripper is not None:
+                    pos += self.__gripper_state_buffer['pos']
+                    vel += self.__gripper_state_buffer['vel']
+                    eff += self.__gripper_state_buffer['eff']
+
+                state = np.array([pos, vel, eff]).T
+                self.__arm_state_buffer, self.__gripper_state_buffer = None, None
+                return arm_ts if self.__sens_ts else hex_zmq_ts_now(), state
+            elif delta_ms > 0.0:
+                self.__gripper_state_buffer = None
+                return None, None
+            else:
+                self.__arm_state_buffer = None
+                return None, None
+
+        return None, None
 
     def __set_cmds(self, cmds: np.ndarray) -> bool:
         # cmds: (n)
@@ -254,5 +280,6 @@ class HexRobotHexarm(HexRobotBase):
             return
         self._working.clear()
         self.__arm_archer.stop()
+        time.sleep(0.5)
         self.__hex_api.close()
         hex_log(HEX_LOG_LEVEL["info"], "HexRobotHexarm closed")
