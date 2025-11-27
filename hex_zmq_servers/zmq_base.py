@@ -21,12 +21,24 @@ MAX_SEQ_NUM = int(1e12)
 ################################################################
 
 
-def hex_zmq_ts_now() -> dict:
-    t_ns = time.perf_counter_ns()
+def hex_zmq_ts_to_ns(ts: dict) -> int:
+    return ts['s'] * 1_000_000_000 + ts['ns']
+
+
+def ns_to_hex_zmq_ts(ns: int) -> dict:
     return {
-        "s": t_ns // 1_000_000_000,
-        "ns": t_ns % 1_000_000_000,
+        "s": ns // 1_000_000_000,
+        "ns": ns % 1_000_000_000,
     }
+
+
+def hex_ns_now() -> int:
+    return time.perf_counter_ns()
+
+
+def hex_zmq_ts_now() -> dict:
+    t_ns = hex_ns_now()
+    return ns_to_hex_zmq_ts(t_ns)
 
 
 def hex_zmq_ts_delta_ms(curr_ts, hdr_ts) -> float:
@@ -52,7 +64,7 @@ class HexRate:
 
     @staticmethod
     def __now_ns() -> int:
-        return time.perf_counter_ns()
+        return hex_ns_now()
 
     def reset(self):
         self.__next_ns = self.__now_ns() + self.__period_ns
@@ -136,6 +148,13 @@ class HexZMQClientBase(ABC):
         self._socket = None
         self._lock = threading.Lock()
         self.__make_socket()
+
+        # receive thread
+        self._recv_thread = threading.Thread(
+            target=self._recv_loop,
+            daemon=True,
+        )
+        self._recv_flag = False
 
     def __del__(self):
         self.close()
@@ -223,11 +242,29 @@ class HexZMQClientBase(ABC):
             return None, None
 
     def close(self):
+        self._recv_flag = False
+        self._recv_thread.join()
         if self._socket is not None:
             try:
                 self._socket.close(0)
             except Exception:
                 pass
+
+    def _wait_for_working(self, timeout: float = 5.0):
+        for _ in range(int(timeout * 10)):
+            if self.is_working():
+                if hasattr(self, "seq_clear"):
+                    self.seq_clear()
+                break
+            else:
+                time.sleep(0.1)
+        self._recv_flag = True
+        self._recv_thread.start()
+
+    @abstractmethod
+    def _recv_loop(self):
+        raise NotImplementedError(
+            "`_receive_thread` should be implemented by the child class")
 
 
 class HexZMQServerBase(ABC):

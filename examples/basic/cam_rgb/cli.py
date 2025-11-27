@@ -6,7 +6,7 @@
 # Date  : 2025-09-25
 ################################################################
 
-import argparse, json, time
+import argparse, json
 from hex_zmq_servers import (
     HexRate,
     hex_zmq_ts_now,
@@ -40,15 +40,8 @@ def main():
         raise ValueError(
             f"cam_rgb_config is not valid, missing key: {missing_key}")
 
-    # wait for camera to work
+    # camera client
     client = HexCamRGBClient(net_config=net_config)
-    for i in range(30):
-        hex_log(HEX_LOG_LEVEL["info"],
-                f"waiting for camera to work: {i * 0.5}s")
-        if client.is_working():
-            break
-        else:
-            time.sleep(0.5)
 
     # get intrinsic params
     _, intri = client.get_intri()

@@ -7,7 +7,8 @@
 ################################################################
 
 import numpy as np
-from ...zmq_base import hex_zmq_ts_now
+from collections import deque
+from ...zmq_base import HexRate, hex_zmq_ts_now
 from ..mujoco_base import HexMujocoClientBase
 
 NET_CONFIG = {
@@ -17,6 +18,15 @@ NET_CONFIG = {
     "server_timeout_ms": 1_000,
     "server_num_workers": 4,
 }
+RECV_CONFIG = {
+    "head_rgb": True,
+    "head_depth": True,
+    "left_rgb": True,
+    "left_depth": True,
+    "right_rgb": True,
+    "right_depth": True,
+    "obj": True,
+}
 
 
 class HexMujocoE3DesktopClient(HexMujocoClientBase):
@@ -24,8 +34,10 @@ class HexMujocoE3DesktopClient(HexMujocoClientBase):
     def __init__(
         self,
         net_config: dict = NET_CONFIG,
+        recv_config: dict = RECV_CONFIG,
     ):
         HexMujocoClientBase.__init__(self, net_config)
+        self.__recv_config = recv_config
         self._cmds_seq = {
             "left": 0,
             "right": 0,
@@ -38,38 +50,24 @@ class HexMujocoE3DesktopClient(HexMujocoClientBase):
             "right_rgb": 0,
             "right_depth": 0,
         }
-
-    def set_cmds(
-        self,
-        cmds: np.ndarray,
-        robot_name: str | None = None,
-    ) -> bool:
-        req_cmd = "set_cmds"
-        if robot_name is not None:
-            req_cmd += f"_{robot_name}"
-        hdr, _ = self.request(
-            {
-                "cmd": req_cmd,
-                "ts": hex_zmq_ts_now(),
-                "args": self._cmds_seq[robot_name],
-            },
-            cmds,
-        )
-        # print(f"{req_cmd} seq: {self._cmds_seq[robot_name]}")
-        try:
-            cmd = hdr["cmd"]
-            if cmd == f"{req_cmd}_ok":
-                self._cmds_seq[robot_name] = (self._cmds_seq[robot_name] +
-                                              1) % self._max_seq_num
-                return True
-            else:
-                return False
-        except KeyError:
-            print(f"\033[91m{hdr['cmd']} requires `cmd`\033[0m")
-            return False
-        except Exception as e:
-            print(f"\033[91m{req_cmd} failed: {e}\033[0m")
-            return False
+        self._states_queue = {
+            "left": deque(maxlen=10),
+            "right": deque(maxlen=10),
+            "obj": deque(maxlen=10),
+        }
+        self._camera_queue = {
+            "head_rgb": deque(maxlen=10),
+            "head_depth": deque(maxlen=10),
+            "left_rgb": deque(maxlen=10),
+            "left_depth": deque(maxlen=10),
+            "right_rgb": deque(maxlen=10),
+            "right_depth": deque(maxlen=10),
+        }
+        self._cmds_queue = {
+            "left": deque(maxlen=10),
+            "right": deque(maxlen=10),
+        }
+        self._wait_for_working()
 
     def reset(self):
         HexMujocoClientBase.reset(self)
@@ -85,6 +83,33 @@ class HexMujocoE3DesktopClient(HexMujocoClientBase):
             "right_rgb": 0,
             "right_depth": 0,
         }
+
+    def get_rgb(self, camera_name: str | None = None):
+        name = f"{camera_name}_rgb"
+        try:
+            return self._camera_queue[name].popleft()
+        except IndexError:
+            return None, None
+        except KeyError:
+            print(f"\033[91munknown camera name: {name}\033[0m")
+            return None, None
+
+    def get_depth(self, camera_name: str | None = None):
+        name = f"{camera_name}_depth"
+        try:
+            return self._camera_queue[name].popleft()
+        except IndexError:
+            return None, None
+        except KeyError:
+            print(f"\033[91munknown camera name: {name}\033[0m")
+            return None, None
+
+    def set_cmds(
+        self,
+        cmds: np.ndarray,
+        robot_name: str | None = None,
+    ):
+        self._cmds_queue[robot_name].append(cmds)
 
     def _process_frame(
         self,
@@ -116,3 +141,91 @@ class HexMujocoE3DesktopClient(HexMujocoClientBase):
         except Exception as e:
             print(f"\033[91m__process_frame failed: {e}\033[0m")
             return None, None
+
+    def _set_cmds_inner(
+        self,
+        cmds: np.ndarray,
+        robot_name: str | None = None,
+    ) -> bool:
+        req_cmd = "set_cmds"
+        if robot_name is not None:
+            req_cmd += f"_{robot_name}"
+        hdr, _ = self.request(
+            {
+                "cmd": req_cmd,
+                "ts": hex_zmq_ts_now(),
+                "args": self._cmds_seq[robot_name],
+            },
+            cmds,
+        )
+        # print(f"{req_cmd} seq: {self._cmds_seq[robot_name]}")
+        try:
+            cmd = hdr["cmd"]
+            if cmd == f"{req_cmd}_ok":
+                self._cmds_seq[robot_name] = (self._cmds_seq[robot_name] +
+                                              1) % self._max_seq_num
+                return True
+            else:
+                return False
+        except KeyError:
+            print(f"\033[91m{hdr['cmd']} requires `cmd`\033[0m")
+            return False
+        except Exception as e:
+            print(f"\033[91m{req_cmd} failed: {e}\033[0m")
+            return False
+
+    def _recv_loop(self):
+        rate = HexRate(2000)
+        image_trig_cnt = 0
+        while self._recv_flag:
+            hdr, states = self._get_states_inner("left")
+            if hdr is not None:
+                self._states_queue["left"].append((hdr, states))
+            hdr, states = self._get_states_inner("right")
+            if hdr is not None:
+                self._states_queue["right"].append((hdr, states))
+            if self.__recv_config["obj"]:
+                hdr, obj_pose = self._get_states_inner("obj")
+                if hdr is not None:
+                    self._states_queue["obj"].append((hdr, obj_pose))
+
+            image_trig_cnt += 1
+            if image_trig_cnt >= 10:
+                image_trig_cnt = 0
+                if self.__recv_config["head_rgb"]:
+                    hdr, img = self._get_rgb_inner("head")
+                    if hdr is not None:
+                        self._camera_queue["head_rgb"].append((hdr, img))
+                if self.__recv_config["head_depth"]:
+                    hdr, img = self._get_depth_inner("head")
+                    if hdr is not None:
+                        self._camera_queue["head_depth"].append((hdr, img))
+                if self.__recv_config["left_rgb"]:
+                    hdr, img = self._get_rgb_inner("left")
+                    if hdr is not None:
+                        self._camera_queue["left_rgb"].append((hdr, img))
+                if self.__recv_config["left_depth"]:
+                    hdr, img = self._get_depth_inner("left")
+                    if hdr is not None:
+                        self._camera_queue["left_depth"].append((hdr, img))
+                if self.__recv_config["right_rgb"]:
+                    hdr, img = self._get_rgb_inner("right")
+                    if hdr is not None:
+                        self._camera_queue["right_rgb"].append((hdr, img))
+                if self.__recv_config["right_depth"]:
+                    hdr, img = self._get_depth_inner("right")
+                    if hdr is not None:
+                        self._camera_queue["right_depth"].append((hdr, img))
+
+            try:
+                cmds = self._cmds_queue["left"].popleft()
+                _ = self._set_cmds_inner(cmds, "left")
+            except IndexError:
+                pass
+            try:
+                cmds = self._cmds_queue["right"].popleft()
+                _ = self._set_cmds_inner(cmds, "right")
+            except IndexError:
+                pass
+
+            rate.sleep()

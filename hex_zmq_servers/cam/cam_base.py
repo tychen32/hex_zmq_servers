@@ -8,10 +8,11 @@
 
 import threading
 import numpy as np
+from collections import deque
 from abc import abstractmethod
 
 from ..device_base import HexDeviceBase
-from ..zmq_base import HexSafeValue, HexZMQClientBase, HexZMQServerBase
+from ..zmq_base import HexSafeValue, HexZMQClientBase, HexZMQServerBase, HexRate
 
 NET_CONFIG = {
     "ip": "127.0.0.1",
@@ -47,14 +48,28 @@ class HexCamClientBase(HexZMQClientBase):
         HexZMQClientBase.__init__(self, net_config)
         self._rgb_seq = 0
         self._depth_seq = 0
+        self._rgb_queue = deque(maxlen=10)
+        self._depth_queue = deque(maxlen=10)
 
     def __del__(self):
         HexZMQClientBase.__del__(self)
 
     def get_rgb(self):
-        return self._process_frame(False)
+        try:
+            return self._rgb_queue.popleft()
+        except IndexError:
+            return None, None
 
     def get_depth(self):
+        try:
+            return self._depth_queue.popleft()
+        except IndexError:
+            return None, None
+        
+    def _get_rgb_inner(self):
+        return self._process_frame(False)
+
+    def _get_depth_inner(self):
         return self._process_frame(True)
 
     def _process_frame(self, depth_flag: bool):
@@ -82,6 +97,17 @@ class HexCamClientBase(HexZMQClientBase):
         except Exception as e:
             print(f"\033[91m__process_frame failed: {e}\033[0m")
             return None, None
+
+    def _recv_loop(self):
+        rate = HexRate(200)
+        while self._recv_flag:
+            hdr, img = self._get_rgb_inner()
+            if hdr is not None:
+                self._rgb_queue.append((hdr, img))
+            hdr, img = self._get_depth_inner()
+            if hdr is not None:
+                self._depth_queue.append((hdr, img))
+            rate.sleep()
 
 
 class HexCamServerBase(HexZMQServerBase):

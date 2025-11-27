@@ -6,7 +6,7 @@
 # Date  : 2025-09-25
 ################################################################
 
-import argparse, json, time
+import argparse, json
 from hex_zmq_servers import (
     HexRate,
     hex_zmq_ts_now,
@@ -32,17 +32,8 @@ def main():
         raise ValueError(
             f"dummy_robot_config is not valid, missing key: {missing_key}")
 
+    # robot client
     client = HexRobotDummyClient(net_config=net_config)
-
-    # wait for robot to work
-    for i in range(3):
-        hex_log(HEX_LOG_LEVEL["info"],
-                f"waiting for robot to work: {i * 0.5}s")
-        if client.is_working():
-            client.seq_clear()
-            break
-        else:
-            time.sleep(0.5)
 
     # get dofs and limits
     dofs = client.get_dofs()[0]
@@ -65,7 +56,7 @@ def main():
             hex_log(HEX_LOG_LEVEL["info"], f"states eff: {states[:, 2]}")
 
         cmds = np.random.uniform(limits[:, :, 0], limits[:, :, 1], (dofs, 3))
-        _ = client.set_cmds(cmds)
+        client.set_cmds(cmds)
 
         rate.sleep()
 

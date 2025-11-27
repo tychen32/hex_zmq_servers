@@ -31,16 +31,8 @@ def main():
         missing_key = ke.args[0]
         raise ValueError(f"cfg is not valid, missing key: {missing_key}")
 
+    # robot client
     client = HexRobotHexarmClient(net_config=net_config)
-
-    # wait for robot to work
-    for i in range(5):
-        hex_log(HEX_LOG_LEVEL["info"], f"waiting for robot to work: {i}s")
-        if client.is_working():
-            client.seq_clear()
-            break
-        else:
-            time.sleep(1.0)
 
     dofs = client.get_dofs()[0]
     limits = client.get_limits()
@@ -69,7 +61,7 @@ def main():
             0.0,
             0.5,
         ])
-        _ = client.set_cmds(cmds)
+        client.set_cmds(cmds)
 
         rate.sleep()
 

@@ -32,3 +32,4 @@ class HexRobotHexarmClient(HexRobotClientBase):
         net_config: dict = NET_CONFIG,
     ):
         HexRobotClientBase.__init__(self, net_config)
+        self._wait_for_working()

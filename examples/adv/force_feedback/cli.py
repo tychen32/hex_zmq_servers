@@ -104,7 +104,7 @@ def main():
                 (master_q.reshape(-1, 1), master_tau_comp.reshape(-1, 1)),
                 axis=1,
             )
-            _ = hexarm_master_client.set_cmds(cmds)
+            hexarm_master_client.set_cmds(cmds)
 
         # slave
         slave_states_hdr, slave_states = hexarm_slave_client.get_states()
@@ -136,7 +136,7 @@ def main():
                     (master_q.reshape(-1, 1), slave_tau_comp.reshape(-1, 1)),
                     axis=1,
                 )
-                _ = hexarm_slave_client.set_cmds(cmds)
+                hexarm_slave_client.set_cmds(cmds)
 
         rate.sleep()
 

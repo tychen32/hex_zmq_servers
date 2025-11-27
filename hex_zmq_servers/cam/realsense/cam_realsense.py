@@ -6,12 +6,12 @@
 # Date  : 2025-09-14
 ################################################################
 
-import time
 import threading
 import numpy as np
 
 from ..cam_base import HexCamBase
 from ...zmq_base import (
+    hex_ns_now,
     hex_zmq_ts_now,
     hex_zmq_ts_delta_ms,
     HexSafeValue,
@@ -109,7 +109,7 @@ class HexCamRealsense(HexCamBase):
         stop_event = hex_values[2]
 
         frames = self.__pipeline.wait_for_frames()
-        bias_ns = np.int64(time.perf_counter_ns()) - np.int64(
+        bias_ns = np.int64(hex_ns_now()) - np.int64(
             frames.get_frame_metadata(rs.frame_metadata_value.sensor_timestamp)
             * 1_000)
 

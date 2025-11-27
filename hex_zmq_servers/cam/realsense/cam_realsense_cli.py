@@ -24,6 +24,7 @@ class HexCamRealsenseClient(HexCamClientBase):
         net_config: dict = NET_CONFIG,
     ):
         HexCamClientBase.__init__(self, net_config)
+        self._wait_for_working()
 
     def get_intri(self):
         intri_hdr, intri = self.request({"cmd": "get_intri"})

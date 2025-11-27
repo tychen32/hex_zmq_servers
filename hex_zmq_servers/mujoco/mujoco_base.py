@@ -8,6 +8,7 @@
 
 import threading
 import numpy as np
+from collections import deque
 from abc import abstractmethod
 
 from ..device_base import HexDeviceBase
@@ -107,6 +108,13 @@ class HexMujocoClientBase(HexZMQClientBase):
         self._cmds_seq = 0
         self._rgb_seq = 0
         self._depth_seq = 0
+        self._states_queue = {
+            "robot": deque(maxlen=10),
+            "obj": deque(maxlen=10),
+        }
+        self._rgb_queue = deque(maxlen=10)
+        self._depth_queue = deque(maxlen=10)
+        self._cmds_queue = deque(maxlen=10)
 
     def __del__(self):
         HexZMQClientBase.__del__(self)
@@ -134,64 +142,37 @@ class HexMujocoClientBase(HexZMQClientBase):
         return limits
 
     def get_states(self, robot_name: str | None = None):
-        req_cmd = "get_states"
-        if robot_name is not None:
-            req_cmd += f"_{robot_name}"
-        hdr, states = self.request({
-            "cmd":
-            req_cmd,
-            "args": (1 + self._states_seq) % self._max_seq_num,
-        })
         try:
-            cmd = hdr["cmd"]
-            if cmd == f"{req_cmd}_ok":
-                self._states_seq = hdr["args"]
-                return hdr, states
-            else:
-                return None, None
-        except KeyError:
-            print(f"\033[91m{hdr['cmd']} requires `cmd`\033[0m")
+            return self._states_queue[robot_name].popleft()
+        except IndexError:
             return None, None
-        except Exception as e:
-            print(f"\033[91m{req_cmd} failed: {e}\033[0m")
+        except KeyError:
+            print(f"\033[91munknown robot name: {robot_name}\033[0m")
             return None, None
 
-    def set_cmds(
-        self,
-        cmds: np.ndarray,
-    ) -> bool:
-        req_cmd = "set_cmds"
-        hdr, _ = self.request(
-            {
-                "cmd": req_cmd,
-                "ts": hex_zmq_ts_now(),
-                "args": self._cmds_seq,
-            },
-            cmds,
-        )
-        # print(f"{req_cmd} seq: {self._cmds_seq}")
+    def get_rgb(self, camera_name: str | None = None):
         try:
-            cmd = hdr["cmd"]
-            if cmd == f"{req_cmd}_ok":
-                self._cmds_seq = (self._cmds_seq + 1) % self._max_seq_num
-                return True
-            else:
-                return False
-        except KeyError:
-            print(f"\033[91m{hdr['cmd']} requires `cmd`\033[0m")
-            return False
-        except Exception as e:
-            print(f"\033[91m{req_cmd} failed: {e}\033[0m")
-            return False
+            return self._rgb_queue.popleft()
+        except IndexError:
+            return None, None
+
+    def get_depth(self, camera_name: str | None = None):
+        try:
+            return self._depth_queue.popleft()
+        except IndexError:
+            return None, None
+
+    def set_cmds(self, cmds: np.ndarray):
+        self._cmds_queue.append(cmds)
 
     def get_intri(self):
         intri_hdr, intri = self.request({"cmd": "get_intri"})
         return intri_hdr, intri
 
-    def get_rgb(self, camera_name: str | None = None):
+    def _get_rgb_inner(self, camera_name: str | None = None):
         return self._process_frame(camera_name, False)
 
-    def get_depth(self, camera_name: str | None = None):
+    def _get_depth_inner(self, camera_name: str | None = None):
         return self._process_frame(camera_name, True)
 
     def _process_frame(
@@ -226,6 +207,57 @@ class HexMujocoClientBase(HexZMQClientBase):
         except Exception as e:
             print(f"\033[91m__process_frame failed: {e}\033[0m")
             return None, None
+
+    def _get_states_inner(self, robot_name: str | None = None):
+        req_cmd = "get_states"
+        if robot_name is not None:
+            req_cmd += f"_{robot_name}"
+        hdr, states = self.request({
+            "cmd":
+            req_cmd,
+            "args": (1 + self._states_seq) % self._max_seq_num,
+        })
+        try:
+            cmd = hdr["cmd"]
+            if cmd == f"{req_cmd}_ok":
+                self._states_seq = hdr["args"]
+                return hdr, states
+            else:
+                return None, None
+        except KeyError:
+            print(f"\033[91m{hdr['cmd']} requires `cmd`\033[0m")
+            return None, None
+        except Exception as e:
+            print(f"\033[91m{req_cmd} failed: {e}\033[0m")
+            return None, None
+
+    def _set_cmds_inner(
+        self,
+        cmds: np.ndarray,
+    ) -> bool:
+        req_cmd = "set_cmds"
+        hdr, _ = self.request(
+            {
+                "cmd": req_cmd,
+                "ts": hex_zmq_ts_now(),
+                "args": self._cmds_seq,
+            },
+            cmds,
+        )
+        # print(f"{req_cmd} seq: {self._cmds_seq}")
+        try:
+            cmd = hdr["cmd"]
+            if cmd == f"{req_cmd}_ok":
+                self._cmds_seq = (self._cmds_seq + 1) % self._max_seq_num
+                return True
+            else:
+                return False
+        except KeyError:
+            print(f"\033[91m{hdr['cmd']} requires `cmd`\033[0m")
+            return False
+        except Exception as e:
+            print(f"\033[91m{req_cmd} failed: {e}\033[0m")
+            return False
 
 
 class HexMujocoServerBase(HexZMQServerBase):

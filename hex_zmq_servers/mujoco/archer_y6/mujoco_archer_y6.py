@@ -17,7 +17,9 @@ from mujoco import viewer
 
 from ..mujoco_base import HexMujocoBase
 from ...zmq_base import (
+    hex_ns_now,
     hex_zmq_ts_now,
+    ns_to_hex_zmq_ts,
     hex_zmq_ts_delta_ms,
     HexRate,
     HexSafeValue,
@@ -123,6 +125,9 @@ class HexMujocoArcherY6(HexMujocoBase):
         mujoco.mj_forward(self.__model, self.__data)
         if not self.__headless:
             self.__viewer = viewer.launch_passive(self.__model, self.__data)
+
+        # time init
+        self.__bias_ns = hex_ns_now() - self.__data.time * 1_000_000_000
 
         # start work loop
         self._working.set()
@@ -299,11 +304,8 @@ class HexMujocoArcherY6(HexMujocoBase):
         ), depth_img
 
     def __mujoco_ts(self):
-        mujoco_ts = self.__data.time
-        return {
-            "s": int(mujoco_ts // 1),
-            "ns": int((mujoco_ts % 1) * 1_000_000_000),
-        }
+        mujoco_ts = self.__data.time * 1_000_000_000 + self.__bias_ns
+        return ns_to_hex_zmq_ts(mujoco_ts)
 
     def close(self):
         if not self._working.is_set():

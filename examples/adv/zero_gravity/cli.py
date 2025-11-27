@@ -67,7 +67,7 @@ def main():
                 tau_comp = np.concatenate((tau_comp, np.zeros(1)), axis=0)
             cmds = np.concatenate(
                 (cur_q.reshape(-1, 1), tau_comp.reshape(-1, 1)), axis=1)
-            _ = hexarm_client.set_cmds(cmds)
+            hexarm_client.set_cmds(cmds)
 
         rate.sleep()
 

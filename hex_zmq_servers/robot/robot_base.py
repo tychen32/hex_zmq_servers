@@ -8,11 +8,13 @@
 
 import threading
 import numpy as np
+from collections import deque
 from abc import abstractmethod
 
 from ..device_base import HexDeviceBase
 from ..zmq_base import (
     hex_zmq_ts_now,
+    HexRate,
     HexSafeValue,
     HexZMQClientBase,
     HexZMQServerBase,
@@ -98,6 +100,8 @@ class HexRobotClientBase(HexZMQClientBase):
         HexZMQClientBase.__init__(self, net_config)
         self._states_seq = 0
         self._cmds_seq = 0
+        self._states_queue = deque(maxlen=10)
+        self._cmds_queue = deque(maxlen=10)
 
     def __del__(self):
         HexZMQClientBase.__del__(self)
@@ -115,6 +119,15 @@ class HexRobotClientBase(HexZMQClientBase):
         return limits
 
     def get_states(self):
+        try:
+            return self._states_queue.popleft()
+        except IndexError:
+            return None, None
+
+    def set_cmds(self, cmds: np.ndarray):
+        self._cmds_queue.append(cmds)
+
+    def _get_states_inner(self):
         hdr, states = self.request({
             "cmd":
             "get_states",
@@ -134,7 +147,7 @@ class HexRobotClientBase(HexZMQClientBase):
             print(f"\033[91mget_states failed: {e}\033[0m")
             return None, None
 
-    def set_cmds(self, cmds: np.ndarray) -> bool:
+    def _set_cmds_inner(self, cmds: np.ndarray) -> bool:
         hdr, _ = self.request(
             {
                 "cmd": "set_cmds",
@@ -157,6 +170,21 @@ class HexRobotClientBase(HexZMQClientBase):
         except Exception as e:
             print(f"\033[91mset_cmds failed: {e}\033[0m")
             return False
+
+    def _recv_loop(self):
+        rate = HexRate(2000)
+        while self._recv_flag:
+            hdr, states = self._get_states_inner()
+            if hdr is not None:
+                self._states_queue.append((hdr, states))
+
+            try:
+                cmds = self._cmds_queue.popleft()
+                _ = self._set_cmds_inner(cmds)
+            except IndexError:
+                pass
+
+            rate.sleep()
 
 
 class HexRobotServerBase(HexZMQServerBase):

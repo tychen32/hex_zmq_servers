@@ -6,7 +6,7 @@
 # Date  : 2025-09-25
 ################################################################
 
-import argparse, json, time
+import argparse, json
 from hex_zmq_servers import (
     HexRate,
     HEX_LOG_LEVEL,
@@ -32,17 +32,8 @@ def main():
             f"archer_y6_mujoco_config is not valid, missing key: {missing_key}"
         )
 
+    # mujoco client
     client = HexMujocoArcherY6Client(net_config=net_config)
-
-    # wait for mujoco to work
-    for i in range(10):
-        hex_log(HEX_LOG_LEVEL["info"],
-                f"waiting for mujoco to work: {i * 0.5}s")
-        if client.is_working():
-            client.seq_clear()
-            break
-        else:
-            time.sleep(0.5)
 
     # get dofs, limits and intri
     dofs = client.get_dofs()
@@ -87,7 +78,7 @@ def main():
                 0.5,
             ])
             # hex_log(HEX_LOG_LEVEL["info"], f"cmds: {cmds}")
-            _ = client.set_cmds(cmds)
+            client.set_cmds(cmds)
 
             depth_hdr, depth_img = client.get_depth()
             if depth_hdr is not None:

@@ -6,7 +6,7 @@
 # Date  : 2025-09-25
 ################################################################
 
-import argparse, json, time
+import argparse, json
 from hex_zmq_servers import (
     HexRate,
     HEX_LOG_LEVEL,
@@ -40,17 +40,8 @@ def main():
             f"e3_desktop_mujoco_config is not valid, missing key: {missing_key}"
         )
 
+    # mujoco client
     client = HexMujocoE3DesktopClient(net_config=net_config)
-
-    # wait for mujoco to work
-    for i in range(10):
-        hex_log(HEX_LOG_LEVEL["info"],
-                f"waiting for mujoco to work: {i * 0.5}s")
-        if client.is_working():
-            client.seq_clear()
-            break
-        else:
-            time.sleep(0.5)
 
     # get dofs, limits and intri
     dofs = client.get_dofs()
@@ -99,27 +90,27 @@ def main():
                 hex_log(HEX_LOG_LEVEL["info"], f"obj_states: {obj_states}")
 
             cmds_left = np.array([
-                0.0,
+                -0.5,
                 -0.0205679922,
                 2.57081467,
                 -0.978840246,
-                0.0,
+                0.5,
                 0.0,
                 0.5,
             ])
             cmds_right = np.array([
-                0.0,
+                0.5,
                 -0.0205679922,
                 2.57081467,
                 -0.978840246,
-                0.0,
+                -0.5,
                 0.0,
                 0.5,
             ])
 
             # hex_log(HEX_LOG_LEVEL["info"], f"cmds: {cmds}")
-            _ = client.set_cmds(cmds_left, "left")
-            _ = client.set_cmds(cmds_right, "right")
+            client.set_cmds(cmds_left, "left")
+            client.set_cmds(cmds_right, "right")
 
             head_depth_hdr, head_depth_img = client.get_depth("head")
             if head_depth_hdr is not None:

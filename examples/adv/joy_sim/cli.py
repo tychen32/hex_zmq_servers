@@ -310,7 +310,7 @@ def main():
                     (mid_joint.reshape(-1, 1), tau_comp.reshape(-1, 1)),
                     axis=1,
                 )
-                _ = mujoco_client.set_cmds(cmds)
+                mujoco_client.set_cmds(cmds)
 
             # rgb
             rgb_hdr, rgb = mujoco_client.get_rgb()
