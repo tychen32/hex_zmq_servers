@@ -7,9 +7,10 @@
 ################################################################
 
 import threading
+from collections import deque
 from abc import ABC, abstractmethod
 
-from .zmq_base import MAX_SEQ_NUM, HexSafeValue
+from .zmq_base import MAX_SEQ_NUM
 
 
 class HexDeviceBase(ABC):
@@ -32,7 +33,7 @@ class HexDeviceBase(ABC):
             self._working.wait(0.1)
 
     @abstractmethod
-    def work_loop(self, hex_values: list[HexSafeValue | threading.Event]):
+    def work_loop(self, hex_queues: list[deque | threading.Event]):
         raise NotImplementedError(
             "`work_loop` should be implemented by the child class")
 

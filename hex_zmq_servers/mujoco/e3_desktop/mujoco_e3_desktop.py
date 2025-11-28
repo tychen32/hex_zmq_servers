@@ -11,6 +11,7 @@ import copy
 import threading
 import cv2
 import numpy as np
+from collections import deque
 
 import mujoco
 from mujoco import viewer
@@ -22,7 +23,6 @@ from ...zmq_base import (
     ns_to_hex_zmq_ts,
     hex_zmq_ts_delta_ms,
     HexRate,
-    HexSafeValue,
 )
 from ...hex_launch import hex_log, HEX_LOG_LEVEL
 from hex_robo_utils import HexCtrlUtilMitJoint as CtrlUtil
@@ -166,19 +166,19 @@ class HexMujocoE3Desktop(HexMujocoBase):
             self.__viewer.sync()
         return True
 
-    def work_loop(self, hex_values: list[HexSafeValue | threading.Event]):
-        states_left_value = hex_values[0]
-        states_right_value = hex_values[1]
-        states_obj_value = hex_values[2]
-        cmds_left_value = hex_values[3]
-        cmds_right_value = hex_values[4]
-        head_rgb_value = hex_values[5]
-        head_depth_value = hex_values[6]
-        left_rgb_value = hex_values[7]
-        left_depth_value = hex_values[8]
-        right_rgb_value = hex_values[9]
-        right_depth_value = hex_values[10]
-        stop_event = hex_values[11]
+    def work_loop(self, hex_queues: list[deque | threading.Event]):
+        states_left_queue = hex_queues[0]
+        states_right_queue = hex_queues[1]
+        states_obj_queue = hex_queues[2]
+        cmds_left_queue = hex_queues[3]
+        cmds_right_queue = hex_queues[4]
+        head_rgb_queue = hex_queues[5]
+        head_depth_queue = hex_queues[6]
+        left_rgb_queue = hex_queues[7]
+        left_depth_queue = hex_queues[8]
+        right_rgb_queue = hex_queues[9]
+        right_depth_queue = hex_queues[10]
+        stop_event = hex_queues[11]
 
         last_states_ts = {"s": 0, "ns": 0}
         states_left_count = 0
@@ -199,22 +199,22 @@ class HexMujocoE3Desktop(HexMujocoBase):
         states_trig_count = 0
         img_trig_count = 0
         init_ts = self.__mujoco_ts() if self.__sens_ts else hex_zmq_ts_now()
-        head_rgb_value.set((init_ts, 0,
+        head_rgb_queue.append((init_ts, 0,
                             np.zeros((self.__height, self.__width, 3),
                                      dtype=np.uint8)))
-        head_depth_value.set((init_ts, 0,
+        head_depth_queue.append((init_ts, 0,
                               np.zeros((self.__height, self.__width),
                                        dtype=np.uint16)))
-        left_rgb_value.set((init_ts, 0,
+        left_rgb_queue.append((init_ts, 0,
                             np.zeros((self.__height, self.__width, 3),
                                      dtype=np.uint8)))
-        left_depth_value.set((init_ts, 0,
+        left_depth_queue.append((init_ts, 0,
                               np.zeros((self.__height, self.__width),
                                        dtype=np.uint16)))
-        right_rgb_value.set((init_ts, 0,
+        right_rgb_queue.append((init_ts, 0,
                              np.zeros((self.__height, self.__width, 3),
                                       dtype=np.uint8)))
-        right_depth_value.set((init_ts, 0,
+        right_depth_queue.append((init_ts, 0,
                                np.zeros((self.__height, self.__width),
                                         dtype=np.uint16)))
         while self._working.is_set() and not stop_event.is_set():
@@ -228,33 +228,41 @@ class HexMujocoE3Desktop(HexMujocoBase):
                     if hex_zmq_ts_delta_ms(ts, last_states_ts) > 1e-6:
                         last_states_ts = ts
                         # states left
-                        states_left_value.set(
+                        states_left_queue.append(
                             (ts, states_left_count, states_left))
                         states_left_count = (states_left_count +
                                              1) % self._max_seq_num
                         # states right
-                        states_right_value.set(
+                        states_right_queue.append(
                             (ts, states_right_count, states_right))
                         states_right_count = (states_right_count +
                                               1) % self._max_seq_num
                         # states obj
-                        states_obj_value.set(
+                        states_obj_queue.append(
                             (ts, states_obj_count, states_obj))
                         states_obj_count = (states_obj_count +
                                             1) % self._max_seq_num
 
                 # cmds
-                cmds_left_pack = cmds_left_value.get(timeout_s=-1.0)
+                cmds_left_pack = None
+                try:
+                    cmds_left_pack = cmds_left_queue.popleft()
+                except IndexError:
+                    pass
                 if cmds_left_pack is not None:
-                    ts, seq, cmds_left_get = cmds_left_pack
+                    ts, seq, cmds_left = cmds_left_pack
                     if seq != last_cmds_left_seq:
                         last_cmds_left_seq = seq
                         if hex_zmq_ts_delta_ms(hex_zmq_ts_now(), ts) < 200.0:
-                            cmds_left = cmds_left_get.copy()
+                            cmds_left = cmds_left.copy()
                 if cmds_left is not None:
                     self.__set_cmds(cmds_left, "left")
 
-                cmds_right_pack = cmds_right_value.get(timeout_s=-1.0)
+                cmds_right_pack = None
+                try:
+                    cmds_right_pack = cmds_right_queue.popleft()
+                except IndexError:
+                    pass
                 if cmds_right_pack is not None:
                     ts, seq, cmds_right_get = cmds_right_pack
                     if seq != last_cmds_right_seq:
@@ -272,7 +280,7 @@ class HexMujocoE3Desktop(HexMujocoBase):
                 if self.__head_rgb:
                     ts, rgb_img = self.__get_rgb("head_camera")
                     if rgb_img is not None:
-                        head_rgb_value.set((ts, head_rgb_count, rgb_img))
+                        head_rgb_queue.append((ts, head_rgb_count, rgb_img))
                         head_rgb_count = (head_rgb_count +
                                           1) % self._max_seq_num
 
@@ -280,7 +288,7 @@ class HexMujocoE3Desktop(HexMujocoBase):
                 if self.__head_depth:
                     ts, depth_img = self.__get_depth("head_camera")
                     if depth_img is not None:
-                        head_depth_value.set((ts, head_depth_count, depth_img))
+                        head_depth_queue.append((ts, head_depth_count, depth_img))
                         head_depth_count = (head_depth_count +
                                             1) % self._max_seq_num
 
@@ -288,7 +296,7 @@ class HexMujocoE3Desktop(HexMujocoBase):
                 if self.__left_rgb:
                     ts, rgb_img = self.__get_rgb("left_camera")
                     if rgb_img is not None:
-                        left_rgb_value.set((ts, left_rgb_count, rgb_img))
+                        left_rgb_queue.append((ts, left_rgb_count, rgb_img))
                         left_rgb_count = (left_rgb_count +
                                           1) % self._max_seq_num
 
@@ -296,7 +304,7 @@ class HexMujocoE3Desktop(HexMujocoBase):
                 if self.__left_depth:
                     ts, depth_img = self.__get_depth("left_camera")
                     if depth_img is not None:
-                        left_depth_value.set((ts, left_depth_count, depth_img))
+                        left_depth_queue.append((ts, left_depth_count, depth_img))
                         left_depth_count = (left_depth_count +
                                             1) % self._max_seq_num
 
@@ -304,7 +312,7 @@ class HexMujocoE3Desktop(HexMujocoBase):
                 if self.__right_rgb:
                     ts, rgb_img = self.__get_rgb("right_camera")
                     if rgb_img is not None:
-                        right_rgb_value.set((ts, right_rgb_count, rgb_img))
+                        right_rgb_queue.append((ts, right_rgb_count, rgb_img))
                         right_rgb_count = (right_rgb_count +
                                            1) % self._max_seq_num
 
@@ -312,7 +320,7 @@ class HexMujocoE3Desktop(HexMujocoBase):
                 if self.__right_depth:
                     ts, depth_img = self.__get_depth("right_camera")
                     if depth_img is not None:
-                        right_depth_value.set(
+                        right_depth_queue.append(
                             (ts, right_depth_count, depth_img))
                         right_depth_count = (right_depth_count +
                                              1) % self._max_seq_num

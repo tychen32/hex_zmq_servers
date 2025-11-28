@@ -13,7 +13,10 @@ from hex_zmq_servers import HEX_ZMQ_SERVERS_PATH_DICT, HEX_ZMQ_CONFIGS_PATH_DICT
 # device config
 # cam 0
 CAM_PATH = "/dev/video0"
-RESOLUTION = [640, 480]
+# RESOLUTION = [1024, 768]
+# CROP = [128, 896, 0, 768]
+RESOLUTION = [1280, 720]
+CROP = [280, 1000, 0, 720]
 EXPOSURE = 70
 TEMPERATURE = 0
 FRAME_RATE = 30
@@ -49,6 +52,7 @@ NODE_PARAMS_DICT = {
             "params": {
                 "cam_path": CAM_PATH,
                 "resolution": RESOLUTION,
+                "crop": CROP,
                 "exposure": EXPOSURE,
                 "temperature": TEMPERATURE,
                 "frame_rate": FRAME_RATE,

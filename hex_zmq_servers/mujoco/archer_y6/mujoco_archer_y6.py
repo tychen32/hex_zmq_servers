@@ -11,6 +11,7 @@ import copy
 import threading
 import cv2
 import numpy as np
+from collections import deque
 
 import mujoco
 from mujoco import viewer
@@ -22,7 +23,6 @@ from ...zmq_base import (
     ns_to_hex_zmq_ts,
     hex_zmq_ts_delta_ms,
     HexRate,
-    HexSafeValue,
 )
 from ...hex_launch import hex_log, HEX_LOG_LEVEL
 from hex_robo_utils import HexCtrlUtilMitJoint as CtrlUtil
@@ -144,13 +144,13 @@ class HexMujocoArcherY6(HexMujocoBase):
             self.__viewer.sync()
         return True
 
-    def work_loop(self, hex_values: list[HexSafeValue | threading.Event]):
-        states_robot_value = hex_values[0]
-        states_obj_value = hex_values[1]
-        cmds_robot_value = hex_values[2]
-        rgb_value = hex_values[3]
-        depth_value = hex_values[4]
-        stop_event = hex_values[5]
+    def work_loop(self, hex_queues: list[deque | threading.Event]):
+        states_robot_queue = hex_queues[0]
+        states_obj_queue = hex_queues[1]
+        cmds_robot_queue = hex_queues[2]
+        rgb_queue = hex_queues[3]
+        depth_queue = hex_queues[4]
+        stop_event = hex_queues[5]
 
         last_states_ts = {"s": 0, "ns": 0}
         states_robot_count = 0
@@ -164,10 +164,10 @@ class HexMujocoArcherY6(HexMujocoBase):
         states_trig_count = 0
         img_trig_count = 0
         init_ts = self.__mujoco_ts() if self.__sens_ts else hex_zmq_ts_now()
-        rgb_value.set((init_ts, 0,
+        rgb_queue.append((init_ts, 0,
                        np.zeros((self.__height, self.__width, 3),
                                 dtype=np.uint8)))
-        depth_value.set((init_ts, 0,
+        depth_queue.append((init_ts, 0,
                          np.zeros((self.__height, self.__width),
                                   dtype=np.uint16)))
         while self._working.is_set() and not stop_event.is_set():
@@ -182,19 +182,23 @@ class HexMujocoArcherY6(HexMujocoBase):
                         last_states_ts = ts
 
                         # states robot
-                        states_robot_value.set(
+                        states_robot_queue.append(
                             (ts, states_robot_count, states_robot))
                         states_robot_count = (states_robot_count +
                                               1) % self._max_seq_num
 
                         # states obj
-                        states_obj_value.set(
+                        states_obj_queue.append(
                             (ts, states_obj_count, states_obj))
                         states_obj_count = (states_obj_count +
                                             1) % self._max_seq_num
 
                 # cmds
-                cmds_robot_pack = cmds_robot_value.get(timeout_s=-1.0)
+                cmds_robot_pack = None
+                try:
+                    cmds_robot_pack = cmds_robot_queue.popleft()
+                except IndexError:
+                    pass
                 if cmds_robot_pack is not None:
                     ts, seq, cmds_robot_get = cmds_robot_pack
                     if seq != last_cmds_robot_seq:
@@ -212,14 +216,14 @@ class HexMujocoArcherY6(HexMujocoBase):
                 if self.__use_rgb:
                     ts, rgb_img = self.__get_rgb()
                     if rgb_img is not None:
-                        rgb_value.set((ts, rgb_count, rgb_img))
+                        rgb_queue.append((ts, rgb_count, rgb_img))
                         rgb_count = (rgb_count + 1) % self._max_seq_num
 
                 # depth
                 if self.__use_depth:
                     ts, depth_img = self.__get_depth()
                     if depth_img is not None:
-                        depth_value.set((ts, depth_count, depth_img))
+                        depth_queue.append((ts, depth_count, depth_img))
                         depth_count = (depth_count + 1) % self._max_seq_num
 
             # mujoco step

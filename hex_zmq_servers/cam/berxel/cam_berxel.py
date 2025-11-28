@@ -9,12 +9,10 @@
 import cv2
 import threading
 import numpy as np
+from collections import deque
 
 from ..cam_base import HexCamBase
-from ...zmq_base import (
-    hex_zmq_ts_now,
-    HexSafeValue,
-)
+from ...zmq_base import hex_zmq_ts_now
 from ...hex_launch import hex_log, HEX_LOG_LEVEL
 from berxel_py_wrapper import *
 
@@ -74,10 +72,10 @@ class HexCamBerxel(HexCamBase):
         self._wait_for_working()
         return self.__serial_number
 
-    def work_loop(self, hex_values: list[HexSafeValue | threading.Event]):
-        rgb_value = hex_values[0]
-        depth_value = hex_values[1]
-        stop_event = hex_values[2]
+    def work_loop(self, hex_queues: list[deque | threading.Event]):
+        rgb_queue = hex_queues[0]
+        depth_queue = hex_queues[1]
+        stop_event = hex_queues[2]
 
         rgb_count = 0
         depth_count = 0
@@ -89,13 +87,13 @@ class HexCamBerxel(HexCamBase):
             # collect rgb frame
             if hawk_rgb_frame is not None:
                 ts, frame = self.__unpack_frame(hawk_rgb_frame, False)
-                rgb_value.set((ts, rgb_count, frame))
+                rgb_queue.append((ts, rgb_count, frame))
                 rgb_count = (rgb_count + 1) % self._max_seq_num
 
             # collect depth frame
             if hawk_depth_frame is not None:
                 ts, frame = self.__unpack_frame(hawk_depth_frame, True)
-                depth_value.set((ts, depth_count, frame))
+                depth_queue.append((ts, depth_count, frame))
                 depth_count = (depth_count + 1) % self._max_seq_num
 
             self.__device.releaseFrame(hawk_rgb_frame)

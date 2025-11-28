@@ -12,7 +12,7 @@ from collections import deque
 from abc import abstractmethod
 
 from ..device_base import HexDeviceBase
-from ..zmq_base import HexSafeValue, HexZMQClientBase, HexZMQServerBase, HexRate
+from ..zmq_base import HexZMQClientBase, HexZMQServerBase, HexRate
 
 NET_CONFIG = {
     "ip": "127.0.0.1",
@@ -32,7 +32,7 @@ class HexCamBase(HexDeviceBase):
         HexDeviceBase.__del__(self)
 
     @abstractmethod
-    def work_loop(self, hex_values: list[HexSafeValue | threading.Event]):
+    def work_loop(self, hex_queues: list[deque | threading.Event]):
         raise NotImplementedError(
             "`work_loop` should be implemented by the child class")
 
@@ -115,8 +115,8 @@ class HexCamServerBase(HexZMQServerBase):
     def __init__(self, net_config: dict = NET_CONFIG):
         HexZMQServerBase.__init__(self, net_config)
         self._device: HexDeviceBase = None
-        self._rgb_value = HexSafeValue()
-        self._depth_value = HexSafeValue()
+        self._rgb_queue = deque(maxlen=10)
+        self._depth_queue = deque(maxlen=10)
 
     def __del__(self):
         HexZMQServerBase.__del__(self)
@@ -125,8 +125,8 @@ class HexCamServerBase(HexZMQServerBase):
     def work_loop(self):
         try:
             self._device.work_loop([
-                self._rgb_value,
-                self._depth_value,
+                self._rgb_queue,
+                self._depth_queue,
                 self._stop_event,
             ])
         finally:
@@ -141,9 +141,11 @@ class HexCamServerBase(HexZMQServerBase):
 
         try:
             if depth_flag:
-                ts, count, img = self._depth_value.get()
+                ts, count, img = self._depth_queue.popleft()
             else:
-                ts, count, img = self._rgb_value.get()
+                ts, count, img = self._rgb_queue.popleft()
+        except IndexError:
+            return {"cmd": f"{recv_hdr['cmd']}_failed"}, None
         except Exception as e:
             print(f"\033[91m{recv_hdr['cmd']} failed: {e}\033[0m")
             return {"cmd": f"{recv_hdr['cmd']}_failed"}, None

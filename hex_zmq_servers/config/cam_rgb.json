@@ -12,6 +12,12 @@
             640,
             480
         ],
+        "crop": [
+            0,
+            640,
+            0,
+            480
+        ],
         "exposure": 70,
         "temperature": 0,
         "frame_rate": 30,

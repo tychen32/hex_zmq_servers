@@ -6,11 +6,10 @@
 # Date  : 2025-09-12
 ################################################################
 
-import os, signal
-import time
-import zmq
+import os, signal, json
+import time, ctypes, ctypes.util
 import threading
-import json
+import zmq
 import numpy as np
 from abc import ABC, abstractmethod
 
@@ -19,6 +18,54 @@ MAX_SEQ_NUM = int(1e12)
 ################################################################
 # Time Related
 ################################################################
+
+
+class SingletonMeta(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super().__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+
+class HexTimeManager(metaclass=SingletonMeta):
+
+    class timespec(ctypes.Structure):
+        _fields_ = [("tv_sec", ctypes.c_long), ("tv_nsec", ctypes.c_long)]
+
+    def __init__(self):
+        self.__use_ptp = False
+        ptp_path = os.getenv("HEX_PTP_CLOCK", None)
+        if ptp_path is not None:
+            self.__fd = os.open(ptp_path, os.O_RDONLY | os.O_CLOEXEC)
+            self.__clock_id = ((~self.__fd) << 3) | 3
+            self.__libc = ctypes.CDLL(
+                ctypes.util.find_library("c"),
+                use_errno=True,
+            )
+            self.__use_ptp = True
+            print(f"Using PTP clock from {ptp_path}")
+        else:
+            print("Using system clock")
+
+    def __del__(self):
+        if self.__use_ptp:
+            os.close(self.__fd)
+
+    def get_now_ns(self) -> int:
+        if self.__use_ptp:
+            ts = self.timespec()
+            if self.__libc.clock_gettime(self.__clock_id,
+                                         ctypes.byref(ts)) != 0:
+                err = ctypes.get_errno()
+                raise OSError(err, os.strerror(err))
+            return ts.tv_sec * 1_000_000_000 + ts.tv_nsec
+        else:
+            return time.perf_counter_ns()
+
+
+_HEX_TIME_MANAGER = HexTimeManager()
 
 
 def hex_zmq_ts_to_ns(ts: dict) -> int:
@@ -33,12 +80,11 @@ def ns_to_hex_zmq_ts(ns: int) -> dict:
 
 
 def hex_ns_now() -> int:
-    return time.perf_counter_ns()
+    return _HEX_TIME_MANAGER.get_now_ns()
 
 
 def hex_zmq_ts_now() -> dict:
-    t_ns = hex_ns_now()
-    return ns_to_hex_zmq_ts(t_ns)
+    return ns_to_hex_zmq_ts(hex_ns_now())
 
 
 def hex_zmq_ts_delta_ms(curr_ts, hdr_ts) -> float:
@@ -96,28 +142,6 @@ class HexRate:
 ################################################################
 # ZMQ Related
 ################################################################
-
-
-class HexSafeValue:
-
-    def __init__(self):
-        self.__value = None
-        self.__ready = threading.Event()
-        self.__lock = threading.Lock()
-
-    def set(self, value):
-        with self.__lock:
-            self.__value = value
-            self.__ready.set()
-
-    def get(self, timeout_s=1.0):
-        if (not self.__ready.is_set()) and timeout_s > 0.0:
-            print(f"no value yet, waiting for {timeout_s}s")
-            self.__ready.wait(timeout_s)
-
-        with self.__lock:
-            return self.__value
-
 
 NET_CONFIG = {
     "ip": "127.0.0.1",

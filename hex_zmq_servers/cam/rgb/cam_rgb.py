@@ -10,18 +10,19 @@ import platform
 import cv2
 import threading
 import numpy as np
+from collections import deque
 
 from ..cam_base import HexCamBase
 from ...zmq_base import (
     hex_zmq_ts_now,
     HexRate,
-    HexSafeValue,
 )
 from ...hex_launch import hex_log, HEX_LOG_LEVEL
 
 CAMERA_CONFIG = {
     "cam_path": "/dev/video0",
     "resolution": [640, 480],
+    "crop": [0, 640, 0, 480],
     "exposure": 100,
     "temperature": 4000,
     "frame_rate": 30,
@@ -40,6 +41,7 @@ class HexCamRGB(HexCamBase):
         try:
             self.__cam_path = camera_config["cam_path"]
             self.__resolution = camera_config["resolution"]
+            self.__crop = camera_config["crop"]
             self.__exposure = camera_config["exposure"]
             self.__temperature = camera_config["temperature"]
             self.__frame_rate = camera_config["frame_rate"]
@@ -62,7 +64,8 @@ class HexCamRGB(HexCamBase):
         self.__cap.set(cv2.CAP_PROP_FPS, self.__frame_rate)
         ae_open = 1.0 if platform.system() == "Windows" else 3.0
         ae_close = 0.0 if platform.system() == "Windows" else 1.0
-        ae_value = 10000*(2**self.__exposure) if platform.system() == "Windows" else self.__exposure
+        ae_value = 10000 * (2**self.__exposure) if platform.system(
+        ) == "Windows" else self.__exposure
         self.__cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, ae_open)
         if self.__exposure != 0:
             self.__cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, ae_close)
@@ -85,7 +88,8 @@ class HexCamRGB(HexCamBase):
         print(f"# Auto Exposure: {self.__cap.get(cv2.CAP_PROP_AUTO_EXPOSURE)}")
         print(f"# Exposure: {self.__cap.get(cv2.CAP_PROP_EXPOSURE)}")
         print(f"# Auto WB: {self.__cap.get(cv2.CAP_PROP_AUTO_WB)}")
-        print(f"# WB Temperature: {self.__cap.get(cv2.CAP_PROP_WB_TEMPERATURE)}")
+        print(
+            f"# WB Temperature: {self.__cap.get(cv2.CAP_PROP_WB_TEMPERATURE)}")
         print("#############################")
 
         # start work loop
@@ -95,13 +99,13 @@ class HexCamRGB(HexCamBase):
         self._wait_for_working()
         return self.__intri
 
-    def work_loop(self, hex_values: list[HexSafeValue | threading.Event]):
-        rgb_value = hex_values[0]
-        depth_value = hex_values[1]
-        stop_event = hex_values[2]
+    def work_loop(self, hex_queues: list[deque | threading.Event]):
+        rgb_queue = hex_queues[0]
+        depth_queue = hex_queues[1]
+        stop_event = hex_queues[2]
 
         rgb_count = 0
-        depth_value.set((hex_zmq_ts_now(), 0,
+        depth_queue.append((hex_zmq_ts_now(), 0,
                          np.zeros((self.__resolution[1], self.__resolution[0]),
                                   dtype=np.uint16)))
         rate = HexRate(self.__frame_rate * 5)
@@ -111,7 +115,9 @@ class HexCamRGB(HexCamBase):
 
             # collect rgb frame
             if ret:
-                rgb_value.set((hex_zmq_ts_now(), rgb_count, frame))
+                frame = frame[self.__crop[2]:self.__crop[3],
+                              self.__crop[0]:self.__crop[1]]
+                rgb_queue.append((hex_zmq_ts_now(), rgb_count, frame))
                 rgb_count = (rgb_count + 1) % self._max_seq_num
 
             rate.sleep()

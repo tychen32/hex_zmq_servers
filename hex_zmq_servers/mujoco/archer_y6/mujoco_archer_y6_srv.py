@@ -7,7 +7,7 @@
 ################################################################
 
 import numpy as np
-from hex_zmq_servers.zmq_base import HexSafeValue
+from collections import deque
 
 try:
     from ..mujoco_base import HexMujocoServerBase
@@ -51,19 +51,19 @@ class HexMujocoArcherY6Server(HexMujocoServerBase):
         self._device = HexMujocoArcherY6(params_config)
 
         # values
-        self._states_robot_value = HexSafeValue()
-        self._states_obj_value = HexSafeValue()
-        self._rgb_value = HexSafeValue()
-        self._depth_value = HexSafeValue()
+        self._states_robot_queue = deque(maxlen=10)
+        self._states_obj_queue = deque(maxlen=10)
+        self._rgb_queue = deque(maxlen=10)
+        self._depth_queue = deque(maxlen=10)
 
     def work_loop(self):
         try:
             self._device.work_loop([
-                self._states_robot_value,
-                self._states_obj_value,
-                self._cmds_value,
-                self._rgb_value,
-                self._depth_value,
+                self._states_robot_queue,
+                self._states_obj_queue,
+                self._cmds_queue,
+                self._rgb_queue,
+                self._depth_queue,
                 self._stop_event,
             ])
         finally:
@@ -79,15 +79,17 @@ class HexMujocoArcherY6Server(HexMujocoServerBase):
         # get robot name
         robot_name = recv_hdr["cmd"].split("_")[2]
         if robot_name == "robot":
-            value = self._states_robot_value
+            queue = self._states_robot_queue
         elif robot_name == "obj":
-            value = self._states_obj_value
+            queue = self._states_obj_queue
         else:
             raise ValueError(
                 f"unknown robot name: {robot_name} in {recv_hdr['cmd']}")
 
         try:
-            ts, count, states = value.get()
+            ts, count, states = queue.popleft()
+        except IndexError:
+            return {"cmd": f"{recv_hdr['cmd']}_failed"}, None
         except Exception as e:
             print(f"\033[91m{recv_hdr['cmd']} failed: {e}\033[0m")
             return {"cmd": f"{recv_hdr['cmd']}_failed"}, None

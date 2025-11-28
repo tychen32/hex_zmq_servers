@@ -15,7 +15,6 @@ from ..device_base import HexDeviceBase
 from ..zmq_base import (
     hex_zmq_ts_now,
     HexRate,
-    HexSafeValue,
     HexZMQClientBase,
     HexZMQServerBase,
 )
@@ -84,7 +83,7 @@ class HexRobotBase(HexDeviceBase):
         return normed_rads
 
     @abstractmethod
-    def work_loop(self, hex_values: list[HexSafeValue | threading.Event]):
+    def work_loop(self, hex_queues: list[deque | threading.Event]):
         raise NotImplementedError(
             "`work_loop` should be implemented by the child class")
 
@@ -192,8 +191,8 @@ class HexRobotServerBase(HexZMQServerBase):
     def __init__(self, net_config: dict = NET_CONFIG):
         HexZMQServerBase.__init__(self, net_config)
         self._device: HexDeviceBase = None
-        self._states_value = HexSafeValue()
-        self._cmds_value = HexSafeValue()
+        self._states_queue = deque(maxlen=10)
+        self._cmds_queue = deque(maxlen=10)
         self._cmds_seq = -1
         self._seq_clear_flag = False
 
@@ -204,8 +203,8 @@ class HexRobotServerBase(HexZMQServerBase):
     def work_loop(self):
         try:
             self._device.work_loop([
-                self._states_value,
-                self._cmds_value,
+                self._states_queue,
+                self._cmds_queue,
                 self._stop_event,
             ])
         finally:
@@ -223,7 +222,9 @@ class HexRobotServerBase(HexZMQServerBase):
             return {"cmd": f"{recv_hdr['cmd']}_failed"}, None
 
         try:
-            ts, count, states = self._states_value.get()
+            ts, count, states = self._states_queue.popleft()
+        except IndexError:
+            return {"cmd": f"{recv_hdr['cmd']}_failed"}, None
         except Exception as e:
             print(f"\033[91m{recv_hdr['cmd']} failed: {e}\033[0m")
             return {"cmd": f"{recv_hdr['cmd']}_failed"}, None
@@ -249,7 +250,7 @@ class HexRobotServerBase(HexZMQServerBase):
             delta = (seq - self._cmds_seq) % self._max_seq_num
             if delta >= 0 and delta < 1e6:
                 self._cmds_seq = seq
-                self._cmds_value.set((recv_hdr["ts"], seq, recv_buf))
+                self._cmds_queue.append((recv_hdr["ts"], seq, recv_buf))
                 return self.no_ts_hdr(recv_hdr, True), None
             else:
                 return self.no_ts_hdr(recv_hdr, False), None

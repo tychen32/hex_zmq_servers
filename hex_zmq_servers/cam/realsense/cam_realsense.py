@@ -8,13 +8,13 @@
 
 import threading
 import numpy as np
+from collections import deque
 
 from ..cam_base import HexCamBase
 from ...zmq_base import (
     hex_ns_now,
     hex_zmq_ts_now,
     hex_zmq_ts_delta_ms,
-    HexSafeValue,
 )
 from ...hex_launch import hex_log, HEX_LOG_LEVEL
 import pyrealsense2 as rs
@@ -103,10 +103,10 @@ class HexCamRealsense(HexCamBase):
         self._wait_for_working()
         return self.__serial_number
 
-    def work_loop(self, hex_values: list[HexSafeValue | threading.Event]):
-        rgb_value = hex_values[0]
-        depth_value = hex_values[1]
-        stop_event = hex_values[2]
+    def work_loop(self, hex_queues: list[deque | threading.Event]):
+        rgb_queue = hex_queues[0]
+        depth_queue = hex_queues[1]
+        stop_event = hex_queues[2]
 
         frames = self.__pipeline.wait_for_frames()
         bias_ns = np.int64(hex_ns_now()) - np.int64(
@@ -134,14 +134,14 @@ class HexCamRealsense(HexCamBase):
             color_frame = aligned_frames.get_color_frame()
             if color_frame:
 
-                rgb_value.set((sen_ts if self.__sens_ts else cur_ns, rgb_count,
+                rgb_queue.append((sen_ts if self.__sens_ts else cur_ns, rgb_count,
                                np.asanyarray(color_frame.get_data())))
                 rgb_count = (rgb_count + 1) % self._max_seq_num
 
             # collect depth frame
             depth_frame = aligned_frames.get_depth_frame()
             if depth_frame:
-                depth_value.set(
+                depth_queue.append(
                     (sen_ts if self.__sens_ts else cur_ns, depth_count,
                      np.asanyarray(depth_frame.get_data())))
                 depth_count = (depth_count + 1) % self._max_seq_num

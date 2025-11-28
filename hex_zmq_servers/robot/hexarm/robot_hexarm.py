@@ -9,13 +9,13 @@
 import time
 import threading
 import numpy as np
+from collections import deque
 
 from ..robot_base import HexRobotBase
 from ...zmq_base import (
     hex_zmq_ts_now,
     hex_zmq_ts_delta_ms,
     HexRate,
-    HexSafeValue,
 )
 from ...hex_launch import hex_log, HEX_LOG_LEVEL
 from hex_device import HexDeviceApi, MotorBase
@@ -126,10 +126,10 @@ class HexRobotHexarm(HexRobotBase):
         # start work loop
         self._working.set()
 
-    def work_loop(self, hex_values: list[HexSafeValue | threading.Event]):
-        states_value = hex_values[0]
-        cmds_value = hex_values[1]
-        stop_event = hex_values[2]
+    def work_loop(self, hex_queues: list[deque | threading.Event]):
+        states_queue = hex_queues[0]
+        cmds_queue = hex_queues[1]
+        stop_event = hex_queues[2]
 
         last_states_ts = hex_zmq_ts_now()
         states_count = 0
@@ -141,11 +141,15 @@ class HexRobotHexarm(HexRobotBase):
             if states is not None:
                 if hex_zmq_ts_delta_ms(ts, last_states_ts) > 1e-6:
                     last_states_ts = ts
-                    states_value.set((ts, states_count, states))
+                    states_queue.append((ts, states_count, states))
                     states_count = (states_count + 1) % self._max_seq_num
 
             # cmds
-            cmds_pack = cmds_value.get(timeout_s=-1.0)
+            cmds_pack = None
+            try:
+                cmds_pack = cmds_queue.popleft()
+            except IndexError:
+                pass
             if cmds_pack is not None:
                 ts, seq, cmds = cmds_pack
                 if seq != last_cmds_seq:
@@ -187,9 +191,9 @@ class HexRobotHexarm(HexRobotBase):
                 eff = self.__arm_state_buffer['eff']
 
                 if self.__gripper is not None:
-                    pos += self.__gripper_state_buffer['pos']
-                    vel += self.__gripper_state_buffer['vel']
-                    eff += self.__gripper_state_buffer['eff']
+                    pos = np.concatenate([pos, self.__gripper_state_buffer['pos']])
+                    vel = np.concatenate([vel, self.__gripper_state_buffer['vel']])
+                    eff = np.concatenate([eff, self.__gripper_state_buffer['eff']])
 
                 state = np.array([pos, vel, eff]).T
                 self.__arm_state_buffer, self.__gripper_state_buffer = None, None

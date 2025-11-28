@@ -8,13 +8,13 @@
 
 import threading
 import numpy as np
+from collections import deque
 
 from ..robot_base import HexRobotBase
 from ...zmq_base import (
     hex_zmq_ts_now,
     hex_zmq_ts_delta_ms,
     HexRate,
-    HexSafeValue,
 )
 from ...hex_launch import hex_log, HEX_LOG_LEVEL
 
@@ -47,10 +47,10 @@ class HexRobotDummy(HexRobotBase):
     def __del__(self):
         HexRobotBase.__del__(self)
 
-    def work_loop(self, hex_values: list[HexSafeValue | threading.Event]):
-        states_value = hex_values[0]
-        cmds_value = hex_values[1]
-        stop_event = hex_values[2]
+    def work_loop(self, hex_queues: list[deque | threading.Event]):
+        states_queue = hex_queues[0]
+        cmds_queue = hex_queues[1]
+        stop_event = hex_queues[2]
 
         dummy_states = np.zeros((self._dofs[0], 3))
         states_count = 0
@@ -58,11 +58,15 @@ class HexRobotDummy(HexRobotBase):
         rate = HexRate(1000)
         while self._working.is_set() and not stop_event.is_set():
             # states
-            states_value.set((hex_zmq_ts_now(), states_count, dummy_states))
+            states_queue.append((hex_zmq_ts_now(), states_count, dummy_states))
             states_count = (states_count + 1) % self._max_seq_num
 
             # cmds
-            cmds_pack = cmds_value.get(timeout_s=-1.0)
+            cmds_pack = None
+            try:
+                cmds_pack = cmds_queue.popleft()
+            except IndexError:
+                pass
             if cmds_pack is not None:
                 ts, seq, cmds = cmds_pack
                 if seq != last_cmds_seq:
