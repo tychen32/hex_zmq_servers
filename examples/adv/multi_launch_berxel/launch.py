@@ -15,11 +15,11 @@ HEX_ZMQ_SERVERS_DIR = f"{SCRIPT_DIR}/../../../hex_zmq_servers"
 
 LAUNCH_PATH_DICT = {
     "cam_berxel_0":
-    f"{HEX_ZMQ_SERVERS_DIR}/../examples/basic/cam_berxel/launch.py",
+    (f"{HEX_ZMQ_SERVERS_DIR}/../examples/basic/cam_berxel/launch.py", None),
     "cam_berxel_1":
-    f"{HEX_ZMQ_SERVERS_DIR}/../examples/basic/cam_berxel/launch.py",
+    (f"{HEX_ZMQ_SERVERS_DIR}/../examples/basic/cam_berxel/launch.py", None),
     "cam_berxel_2":
-    f"{HEX_ZMQ_SERVERS_DIR}/../examples/basic/cam_berxel/launch.py",
+    (f"{HEX_ZMQ_SERVERS_DIR}/../examples/basic/cam_berxel/launch.py", None),
 }
 
 # device config
@@ -134,7 +134,8 @@ LAUNCH_PARAMS_DICT = {
 }
 
 
-def get_node_cfgs(params_dict: dict = LAUNCH_PARAMS_DICT):
+def get_node_cfgs(params_dict: dict = LAUNCH_PARAMS_DICT,
+                  launch_arg: dict | None = None):
     return HexNodeConfig.get_launch_params_cfgs(
         launch_params_dict=params_dict,
         launch_default_params_dict=LAUNCH_PARAMS_DICT,

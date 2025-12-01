@@ -15,11 +15,11 @@ HEX_ZMQ_SERVERS_DIR = f"{SCRIPT_DIR}/../../../hex_zmq_servers"
 
 LAUNCH_PATH_DICT = {
     "robot_dummy_0":
-    f"{HEX_ZMQ_SERVERS_DIR}/../examples/basic/robot_dummy/launch.py",
+    (f"{HEX_ZMQ_SERVERS_DIR}/../examples/basic/robot_dummy/launch.py", None),
     "robot_dummy_1":
-    f"{HEX_ZMQ_SERVERS_DIR}/../examples/basic/robot_dummy/launch.py",
+    (f"{HEX_ZMQ_SERVERS_DIR}/../examples/basic/robot_dummy/launch.py", None),
     "robot_dummy_2":
-    f"{HEX_ZMQ_SERVERS_DIR}/../examples/basic/robot_dummy/launch.py",
+    (f"{HEX_ZMQ_SERVERS_DIR}/../examples/basic/robot_dummy/launch.py", None),
 }
 
 LAUNCH_PARAMS_DICT = {

@@ -49,7 +49,8 @@ NODE_PARAMS_DICT = {
 }
 
 
-def get_node_cfgs(node_params_dict: dict = NODE_PARAMS_DICT):
+def get_node_cfgs(node_params_dict: dict = NODE_PARAMS_DICT,
+                  launch_arg: dict | None = None):
     return HexNodeConfig.parse_node_params_dict(
         node_params_dict,
         NODE_PARAMS_DICT,

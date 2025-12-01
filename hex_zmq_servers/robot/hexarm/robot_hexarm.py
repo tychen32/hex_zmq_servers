@@ -287,6 +287,5 @@ class HexRobotHexarm(HexRobotBase):
             return
         self._working.clear()
         self.__arm_archer.stop()
-        time.sleep(0.5)
         self.__hex_api.close()
         hex_log(HEX_LOG_LEVEL["info"], "HexRobotHexarm closed")

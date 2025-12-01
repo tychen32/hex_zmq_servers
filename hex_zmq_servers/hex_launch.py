@@ -124,7 +124,7 @@ class HexNodeConfig():
         launch_path_dict: dict,
     ) -> HexNodeConfig:
         cfg_list = []
-        for launch_name, launch_path in launch_path_dict.items():
+        for launch_name, (launch_path, launch_arg) in launch_path_dict.items():
             node_default_params_dict = launch_default_params_dict.get(
                 launch_name, {})
 
@@ -146,6 +146,7 @@ class HexNodeConfig():
                 HexNodeConfig.get_node_cfgs_from_launch(
                     launch_path,
                     launch_update_cfg,
+                    launch_arg,
                 ))
 
         final_cfg = HexNodeConfig()
@@ -159,6 +160,7 @@ class HexNodeConfig():
     def get_node_cfgs_from_launch(
         launch_path: str,
         params: dict | HexNodeConfig = {},
+        launch_arg: dict | None = None,
     ) -> HexNodeConfig:
         # normalize the path
         launch_path = os.path.abspath(launch_path)
@@ -185,10 +187,13 @@ class HexNodeConfig():
         get_node_cfgs_func = getattr(launch_module, "get_node_cfgs")
         if isinstance(params, dict):
             print("params is dict")
-            node_cfgs = get_node_cfgs_func(params)
+            node_cfgs = get_node_cfgs_func(params, launch_arg)
         elif isinstance(params, HexNodeConfig):
             print("params is HexNodeConfig")
-            node_cfgs = get_node_cfgs_func(params.get_cfgs(use_list=False))
+            node_cfgs = get_node_cfgs_func(
+                params.get_cfgs(use_list=False),
+                launch_arg,
+            )
         else:
             raise ValueError(f"Invalid params: {params}")
         return node_cfgs
