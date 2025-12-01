@@ -11,20 +11,20 @@ from hex_zmq_servers import HexLaunch, HexNodeConfig
 from hex_zmq_servers import HEX_ZMQ_SERVERS_PATH_DICT, HEX_ZMQ_CONFIGS_PATH_DICT
 
 # robot model config
-ARM_TYPE = "archer_l6y"
-GRIPPER_TYPE = "gp100"
+ARM_TYPE = "archer_y6"
+GRIPPER_TYPE = "gp100_handle"
 if GRIPPER_TYPE == "empty":
     USE_GRIPPER = False
 else:
     USE_GRIPPER = True
 
 # device config
-DEVICE_IP = "192.168.1.101"
+DEVICE_IP = "172.18.20.190"
 HEXARM_DEVICE_PORT = 8439
 
 # node params
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-HEX_ZMQ_SERVERS_DIR = f"{SCRIPT_DIR}/../../hex_zmq_servers"
+HEX_ZMQ_SERVERS_DIR = f"{SCRIPT_DIR}/../../../hex_zmq_servers"
 NODE_PARAMS_DICT = {
     # cli
     "robot_hexarm_cli": {

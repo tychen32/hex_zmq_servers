@@ -54,18 +54,20 @@ class HexCamClientBase(HexZMQClientBase):
     def __del__(self):
         HexZMQClientBase.__del__(self)
 
-    def get_rgb(self):
+    def get_rgb(self, newest: bool = False):
         try:
-            return self._rgb_queue.popleft()
+            return self._rgb_queue.popleft(
+            ) if not newest else self._rgb_queue[-1]
         except IndexError:
             return None, None
 
-    def get_depth(self):
+    def get_depth(self, newest: bool = False):
         try:
-            return self._depth_queue.popleft()
+            return self._depth_queue.popleft(
+            ) if not newest else self._depth_queue[-1]
         except IndexError:
             return None, None
-        
+
     def _get_rgb_inner(self):
         return self._process_frame(False)
 

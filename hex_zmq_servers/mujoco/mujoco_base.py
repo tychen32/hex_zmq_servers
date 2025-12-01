@@ -140,24 +140,27 @@ class HexMujocoClientBase(HexZMQClientBase):
         _, limits = self.request({"cmd": "get_limits"})
         return limits
 
-    def get_states(self, robot_name: str | None = None):
+    def get_states(self, robot_name: str | None = None, newest: bool = False):
         try:
-            return self._states_queue[robot_name].popleft()
+            return self._states_queue[robot_name].popleft(
+            ) if not newest else self._states_queue[robot_name][-1]
         except IndexError:
             return None, None
         except KeyError:
             print(f"\033[91munknown robot name: {robot_name}\033[0m")
             return None, None
 
-    def get_rgb(self, camera_name: str | None = None):
+    def get_rgb(self, camera_name: str | None = None, newest: bool = False):
         try:
-            return self._rgb_queue.popleft()
+            return self._rgb_queue.popleft(
+            ) if not newest else self._rgb_queue[-1]
         except IndexError:
             return None, None
 
-    def get_depth(self, camera_name: str | None = None):
+    def get_depth(self, camera_name: str | None = None, newest: bool = False):
         try:
-            return self._depth_queue.popleft()
+            return self._depth_queue.popleft(
+            ) if not newest else self._depth_queue[-1]
         except IndexError:
             return None, None
 

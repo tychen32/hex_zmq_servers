@@ -84,20 +84,22 @@ class HexMujocoE3DesktopClient(HexMujocoClientBase):
             "right_depth": 0,
         }
 
-    def get_rgb(self, camera_name: str | None = None):
+    def get_rgb(self, camera_name: str | None = None, newest: bool = False):
         name = f"{camera_name}_rgb"
         try:
-            return self._camera_queue[name].popleft()
+            return self._camera_queue[name].popleft(
+            ) if not newest else self._camera_queue[name][-1]
         except IndexError:
             return None, None
         except KeyError:
             print(f"\033[91munknown camera name: {name}\033[0m")
             return None, None
 
-    def get_depth(self, camera_name: str | None = None):
+    def get_depth(self, camera_name: str | None = None, newest: bool = False):
         name = f"{camera_name}_depth"
         try:
-            return self._camera_queue[name].popleft()
+            return self._camera_queue[name].popleft(
+            ) if not newest else self._camera_queue[name][-1]
         except IndexError:
             return None, None
         except KeyError:

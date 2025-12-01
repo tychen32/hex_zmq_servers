@@ -117,9 +117,10 @@ class HexRobotClientBase(HexZMQClientBase):
         _, limits = self.request({"cmd": "get_limits"})
         return limits
 
-    def get_states(self):
+    def get_states(self, newest: bool = False):
         try:
-            return self._states_queue.popleft()
+            return self._states_queue.popleft(
+            ) if not newest else self._states_queue[-1]
         except IndexError:
             return None, None
 

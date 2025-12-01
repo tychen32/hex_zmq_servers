@@ -191,9 +191,12 @@ class HexRobotHexarm(HexRobotBase):
                 eff = self.__arm_state_buffer['eff']
 
                 if self.__gripper is not None:
-                    pos = np.concatenate([pos, self.__gripper_state_buffer['pos']])
-                    vel = np.concatenate([vel, self.__gripper_state_buffer['vel']])
-                    eff = np.concatenate([eff, self.__gripper_state_buffer['eff']])
+                    pos = np.concatenate(
+                        [pos, self.__gripper_state_buffer['pos']])
+                    vel = np.concatenate(
+                        [vel, self.__gripper_state_buffer['vel']])
+                    eff = np.concatenate(
+                        [eff, self.__gripper_state_buffer['eff']])
 
                 state = np.array([pos, vel, eff]).T
                 self.__arm_state_buffer, self.__gripper_state_buffer = None, None
