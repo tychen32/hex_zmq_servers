@@ -12,7 +12,7 @@ import numpy as np
 from collections import deque
 
 from ..cam_base import HexCamBase
-from ...zmq_base import hex_zmq_ts_now
+from ...zmq_base import hex_ns_now, hex_zmq_ts_now
 from ...hex_launch import hex_log, HEX_LOG_LEVEL
 from berxel_py_wrapper import *
 
@@ -77,8 +77,21 @@ class HexCamBerxel(HexCamBase):
         depth_queue = hex_queues[1]
         stop_event = hex_queues[2]
 
+        # clean cache
+        clean_cnt = 0
+        while clean_cnt < 5:
+            hawk_rgb_frame = self.__device.readColorFrame(40)
+            hawk_depth_frame = self.__device.readDepthFrame(40)
+            if hawk_rgb_frame is not None:
+                self.__device.releaseFrame(hawk_rgb_frame)
+            if hawk_depth_frame is not None:
+                self.__device.releaseFrame(hawk_depth_frame)
+            clean_cnt += 1
+            time.sleep(0.01)
+
         rgb_count = 0
         depth_count = 0
+        bias_ns = hex_ns_now() - time.time_ns()
         while self._working.is_set() and not stop_event.is_set():
             # read frame
             hawk_rgb_frame = self.__device.readColorFrame(40)
@@ -86,13 +99,14 @@ class HexCamBerxel(HexCamBase):
 
             # collect rgb frame
             if hawk_rgb_frame is not None:
-                ts, frame = self.__unpack_frame(hawk_rgb_frame, False)
+                ts, frame = self.__unpack_frame(hawk_rgb_frame, False, bias_ns)
                 rgb_queue.append((ts, rgb_count, frame))
                 rgb_count = (rgb_count + 1) % self._max_seq_num
 
             # collect depth frame
             if hawk_depth_frame is not None:
-                ts, frame = self.__unpack_frame(hawk_depth_frame, True)
+                ts, frame = self.__unpack_frame(hawk_depth_frame, True,
+                                                bias_ns)
                 depth_queue.append((ts, depth_count, frame))
                 depth_count = (depth_count + 1) % self._max_seq_num
 
@@ -102,12 +116,17 @@ class HexCamBerxel(HexCamBase):
         # close
         self.close()
 
-    def __unpack_frame(self, hawk_frame: BerxelHawkFrame, depth: bool = False):
+    def __unpack_frame(
+        self,
+        hawk_frame: BerxelHawkFrame,
+        depth: bool = False,
+        bias_ns: int = 0,
+    ):
         # common variables
-        berxel_ts = hawk_frame.getTimeStamp()
+        berxel_ts_ns = bias_ns + int(hawk_frame.getTimeStamp() * 1_000)
         ts = {
-            "s": berxel_ts // 1_000_000,
-            "ns": berxel_ts % 1_000_000 * 1_000,
+            "s": berxel_ts_ns // 1_000_000_000,
+            "ns": berxel_ts_ns % 1_000_000_000,
         }
         width = hawk_frame.getWidth()
         height = hawk_frame.getHeight()
@@ -176,7 +195,8 @@ class HexCamBerxel(HexCamBase):
                     device_idx = idx
                     break
             if device_idx == -1:
-                print(f"can not find device with serial number: {serial_number}")
+                print(
+                    f"can not find device with serial number: {serial_number}")
                 print("available device serial numbers:")
                 for device in device_list:
                     print(f"{device.serialNumber}")
@@ -196,7 +216,9 @@ class HexCamBerxel(HexCamBase):
         self.__device.setColorExposureGain(self.__exposure, self.__gain)
         self.__device.setRegistrationEnable(True)
         self.__device.setFrameSync(True)
-        self.__device.setSystemClock()
+        while self.__device.setSystemClock() != 0:
+            print("set system clock failed")
+            time.sleep(0.1)
 
         intrinsic_params = self.__device.getDeviceIntriscParams()
         self.__intri[0] = intrinsic_params.colorIntrinsicParams.fx / 2
