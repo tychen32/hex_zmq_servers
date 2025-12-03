@@ -13,7 +13,7 @@ from hex_zmq_servers import (
     hex_zmq_ts_delta_ms,
     HEX_LOG_LEVEL,
     hex_log,
-    HexCamBerxelClient,
+    HexCamRealsenseClient,
 )
 
 import cv2
@@ -41,10 +41,10 @@ def main():
     except KeyError as ke:
         missing_key = ke.args[0]
         raise ValueError(
-            f"berxel_cam_config is not valid, missing key: {missing_key}")
+            f"realsense_cam_config is not valid, missing key: {missing_key}")
 
     # camera client
-    client = HexCamBerxelClient(net_config=net_config)
+    client = HexCamRealsenseClient(net_config=net_config)
 
     # get intrinsic params
     _, intri = client.get_intri()
@@ -56,7 +56,6 @@ def main():
         while True:
             depth_hdr, depth_img = client.get_depth()
             if depth_hdr is not None:
-                print("get depth frame")
                 curr_ts = hex_zmq_ts_now()
                 hex_log(
                     HEX_LOG_LEVEL["info"],
@@ -81,7 +80,6 @@ def main():
 
             rgb_hdr, rgb_img = client.get_rgb()
             if rgb_hdr is not None:
-                print("get rgb frame")
                 curr_ts = hex_zmq_ts_now()
                 hex_log(
                     HEX_LOG_LEVEL["info"],

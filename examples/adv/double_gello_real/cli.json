@@ -11,9 +11,14 @@
         "port": 12346,
         "client_timeout_ms": 200
     },
-    "mujoco_net_cfg": {
+    "hexarm_left_net_cfg": {
         "ip": "127.0.0.1",
         "port": 12347,
+        "client_timeout_ms": 200
+    },
+    "hexarm_right_net_cfg": {
+        "ip": "127.0.0.1",
+        "port": 12348,
         "client_timeout_ms": 200
     }
 }
