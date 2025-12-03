@@ -49,7 +49,7 @@ NODE_PARAMS_DICT = {
                 "mit_kp":
                 [1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0],
                 "mit_kd": [20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0],
-                "cam_type": "rgbd",
+                "cam_type": "realsense",
                 "headless": False,
                 "sens_ts": True,
             },

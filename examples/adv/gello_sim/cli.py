@@ -70,10 +70,11 @@ def main():
             # robot
             robot_states_hdr, robot_states = mujoco_client.get_states("robot")
             if robot_states_hdr is not None:
-                arm_q = robot_states[:, 0]
-                arm_dq = robot_states[:, 1]
+                arm_q = robot_states[:, 0][:-1]
+                arm_dq = robot_states[:, 1][:-1]
                 _, c_mat, g_vec, _, _ = dyn_util.dynamic_params(arm_q, arm_dq)
-                tau_comp = c_mat @ arm_dq + g_vec
+                tau_comp = np.zeros(7)
+                tau_comp[:-1] = c_mat @ arm_dq + g_vec
                 if gello_cmds is not None:
                     cmds = np.concatenate(
                         (gello_cmds.reshape(-1, 1), tau_comp.reshape(-1, 1)),
