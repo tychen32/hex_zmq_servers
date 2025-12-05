@@ -89,7 +89,6 @@ class HexRobotHexarm(HexRobotBase):
             time.sleep(1)
         self.__arm_archer = self.__hex_api.find_device_by_robot_type(arm_type)
         self.__arm_archer.start()
-        self.__arm_archer.command_timeout_check(False)
         self.__arm_dofs = len(self.__arm_archer)
         self._limits = self.__arm_archer.get_joint_limits()
 
