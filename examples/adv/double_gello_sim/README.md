@@ -35,7 +35,7 @@ double_gello_sim/
     sudo chmod 666 /dev/ttyUSB1
     ```
 
-3. (**Important**) Modify the `GELLO_0_DEVICE` and `GELLO_1_DEVICE` in `launch.py` to match your device port (e.g., `/dev/ttyUSB0` and `/dev/ttyUSB1`) before running the example.
+3. (**Important**) Modify the `LEFT_GELLO_DEVICE` and `RIGHT_GELLO_DEVICE` in `launch.py` to match your device port (e.g., `/dev/ttyUSB0` and `/dev/ttyUSB1`) before running the example.
 
 ## Usage
 

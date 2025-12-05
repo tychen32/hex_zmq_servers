@@ -148,9 +148,6 @@ class HexMujocoE3Desktop(HexMujocoBase):
         if not self.__headless:
             self.__viewer = viewer.launch_passive(self.__model, self.__data)
 
-        # time init
-        self.__bias_ns = hex_ns_now() - self.__data.time * 1_000_000_000
-
         # start work loop
         self._working.set()
 
@@ -198,6 +195,7 @@ class HexMujocoE3Desktop(HexMujocoBase):
         rate = HexRate(self.__sim_rate)
         states_trig_count = 0
         img_trig_count = 0
+        self.__bias_ns = hex_ns_now() - self.__data.time * 1_000_000_000
         init_ts = self.__mujoco_ts() if self.__sens_ts else hex_zmq_ts_now()
         head_rgb_queue.append((init_ts, 0,
                             np.zeros((self.__height, self.__width, 3),

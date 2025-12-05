@@ -99,7 +99,7 @@ def hex_zmq_ts_delta_ms(curr_ts, hdr_ts) -> float:
 
 class HexRate:
 
-    def __init__(self, hz: float, spin_threshold_ns: int = 1_000_000):
+    def __init__(self, hz: float, spin_threshold_ns: int = 10_000):
         if hz <= 0:
             raise ValueError("hz must be greater than 0")
         if spin_threshold_ns < 0:

@@ -45,7 +45,7 @@ gello_real/
     # Logout and login again
     ```
 
-4. (**Important**) Modify the `GELLO_0_DEVICE` and `GELLO_1_DEVICE` in `launch.py` to match your device port (e.g., `/dev/ttyUSB0` and `/dev/ttyUSB1`) before running the example.
+4. (**Important**) Modify the `LEFT_GELLO_DEVICE` and `RIGHT_GELLO_DEVICE` in `launch.py` to match your device port (e.g., `/dev/ttyUSB0` and `/dev/ttyUSB1`) before running the example.
 
 **For E3 Desktop robot:**
 

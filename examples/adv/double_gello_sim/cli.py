@@ -39,24 +39,24 @@ def main():
     try:
         model_path = cfg["model_path"]
         last_link = cfg["last_link"]
-        gello_0_net_cfg = cfg["gello_0_net_cfg"]
-        gello_1_net_cfg = cfg["gello_1_net_cfg"]
+        left_gello_net_cfg = cfg["left_gello_net_cfg"]
+        right_gello_net_cfg = cfg["right_gello_net_cfg"]
         mujoco_net_cfg = cfg["mujoco_net_cfg"]
     except KeyError as ke:
         missing_key = ke.args[0]
         raise ValueError(f"cfg is not valid, missing key: {missing_key}")
 
-    gello_0_client = HexRobotGelloClient(net_config=gello_0_net_cfg)
-    gello_1_client = HexRobotGelloClient(net_config=gello_1_net_cfg)
+    left_gello_client = HexRobotGelloClient(net_config=left_gello_net_cfg)
+    right_gello_client = HexRobotGelloClient(net_config=right_gello_net_cfg)
     mujoco_client = HexMujocoE3DesktopClient(net_config=mujoco_net_cfg)
     dyn_util = DynUtil(model_path, last_link)
 
     # wait servers to work
-    if not wait_client_working(gello_0_client):
-        hex_log(HEX_LOG_LEVEL["err"], "gello_0 server is not working")
+    if not wait_client_working(left_gello_client):
+        hex_log(HEX_LOG_LEVEL["err"], "left_gello server is not working")
         return
-    if not wait_client_working(gello_1_client):
-        hex_log(HEX_LOG_LEVEL["err"], "gello_1 server is not working")
+    if not wait_client_working(right_gello_client):
+        hex_log(HEX_LOG_LEVEL["err"], "right_gello server is not working")
         return
     if not wait_client_working(mujoco_client):
         hex_log(HEX_LOG_LEVEL["err"], "mujoco server is not working")
@@ -64,17 +64,17 @@ def main():
 
     # work loop
     rate = HexRate(250)
-    gello_0_cmds = None
-    gello_1_cmds = None
+    left_gello_cmds = None
+    right_gello_cmds = None
     try:
         while True:
             # gello
-            gello_0_states_hdr, gello_0_states = gello_0_client.get_states()
-            if gello_0_states_hdr is not None:
-                gello_0_cmds = gello_0_states.copy()
-            gello_1_states_hdr, gello_1_states = gello_1_client.get_states()
-            if gello_1_states_hdr is not None:
-                gello_1_cmds = gello_1_states.copy()
+            left_gello_states_hdr, left_gello_states = left_gello_client.get_states()
+            if left_gello_states_hdr is not None:
+                left_gello_cmds = left_gello_states.copy()
+            right_gello_states_hdr, right_gello_states = right_gello_client.get_states()
+            if right_gello_states_hdr is not None:
+                right_gello_cmds = right_gello_states.copy()
 
             # left
             left_states_hdr, left_states = mujoco_client.get_states("left")
@@ -84,9 +84,9 @@ def main():
                 _, c_mat, g_vec, _, _ = dyn_util.dynamic_params(arm_q, arm_dq)
                 tau_comp = np.zeros(7)
                 tau_comp[:-1] = c_mat @ arm_dq + g_vec
-                if gello_0_cmds is not None:
+                if left_gello_cmds is not None:
                     cmds = np.concatenate(
-                        (gello_0_cmds.reshape(-1, 1), tau_comp.reshape(-1, 1)),
+                        (left_gello_cmds.reshape(-1, 1), tau_comp.reshape(-1, 1)),
                         axis=1)
                     mujoco_client.set_cmds(cmds, "left")
 
@@ -98,9 +98,9 @@ def main():
                 _, c_mat, g_vec, _, _ = dyn_util.dynamic_params(arm_q, arm_dq)
                 tau_comp = np.zeros(7)
                 tau_comp[:-1] = c_mat @ arm_dq + g_vec
-                if gello_1_cmds is not None:
+                if right_gello_cmds is not None:
                     cmds = np.concatenate(
-                        (gello_1_cmds.reshape(-1, 1), tau_comp.reshape(-1, 1)),
+                        (right_gello_cmds.reshape(-1, 1), tau_comp.reshape(-1, 1)),
                         axis=1)
                     mujoco_client.set_cmds(cmds, "right")
 

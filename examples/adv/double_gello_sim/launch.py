@@ -16,13 +16,13 @@ ARM_TYPE = "archer_y6"
 GRIPPER_TYPE = "gp100"
 
 # server ports
-GELLO_0_SRV_PORT = 12345
-GELLO_1_SRV_PORT = 12346
+LEFT_GELLO_SRV_PORT = 12345
+RIGHT_GELLO_SRV_PORT = 12346
 MUJOCO_SRV_PORT = 12347
 
 # device config
-GELLO_0_DEVICE = "/dev/ttyUSB0"
-GELLO_1_DEVICE = "/dev/ttyUSB1"
+LEFT_GELLO_DEVICE = "/dev/ttyUSB1"
+RIGHT_GELLO_DEVICE = "/dev/ttyUSB0"
 
 # node params
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -36,24 +36,24 @@ NODE_PARAMS_DICT = {
         "cfg": {
             "model_path": HEXARM_URDF_PATH_DICT[f"{ARM_TYPE}_{GRIPPER_TYPE}"],
             "last_link": "link_6",
-            "gello_0_net_cfg": {
-                "port": GELLO_0_SRV_PORT,
+            "left_gello_net_cfg": {
+                "port": LEFT_GELLO_SRV_PORT,
             },
-            "gello_1_net_cfg": {
-                "port": GELLO_1_SRV_PORT,
+            "right_gello_net_cfg": {
+                "port": RIGHT_GELLO_SRV_PORT,
             },
             "mujoco_net_cfg": {
                 "port": MUJOCO_SRV_PORT,
             },
         },
     },
-    "robot_gello_0_srv": {
-        "name": "robot_gello_0_srv",
+    "robot_left_gello_srv": {
+        "name": "robot_left_gello_srv",
         "node_path": HEX_ZMQ_SERVERS_PATH_DICT["robot_gello"],
         "cfg_path": HEX_ZMQ_CONFIGS_PATH_DICT["robot_gello"],
         "cfg": {
             "net": {
-                "port": GELLO_0_SRV_PORT,
+                "port": LEFT_GELLO_SRV_PORT,
             },
             "params": {
                 "idxs": [0, 1, 2, 3, 4, 5, 6],
@@ -68,7 +68,7 @@ NODE_PARAMS_DICT = {
                     [0.0, 1.33],
                 ],
                 "device":
-                GELLO_0_DEVICE,
+                LEFT_GELLO_DEVICE,
                 "baudrate":
                 115200,
                 "max_retries":
@@ -78,13 +78,13 @@ NODE_PARAMS_DICT = {
             },
         },
     },
-    "robot_gello_1_srv": {
-        "name": "robot_gello_1_srv",
+    "robot_right_gello_srv": {
+        "name": "robot_right_gello_srv",
         "node_path": HEX_ZMQ_SERVERS_PATH_DICT["robot_gello"],
         "cfg_path": HEX_ZMQ_CONFIGS_PATH_DICT["robot_gello"],
         "cfg": {
             "net": {
-                "port": GELLO_1_SRV_PORT,
+                "port": RIGHT_GELLO_SRV_PORT,
             },
             "params": {
                 "idxs": [0, 1, 2, 3, 4, 5, 6],
@@ -99,7 +99,7 @@ NODE_PARAMS_DICT = {
                     [0.0, 1.33],
                 ],
                 "device":
-                GELLO_1_DEVICE,
+                RIGHT_GELLO_DEVICE,
                 "baudrate":
                 115200,
                 "max_retries":

@@ -1,12 +1,12 @@
 {
     "model_path": "path/to/model.urdf",
     "last_link": "link_6",
-    "gello_0_net_cfg": {
+    "left_gello_net_cfg": {
         "ip": "127.0.0.1",
         "port": 12345,
         "client_timeout_ms": 200
     },
-    "gello_1_net_cfg": {
+    "right_gello_net_cfg": {
         "ip": "127.0.0.1",
         "port": 12346,
         "client_timeout_ms": 200
