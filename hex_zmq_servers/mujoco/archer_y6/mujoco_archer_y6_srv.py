@@ -50,7 +50,8 @@ class HexMujocoArcherY6Server(HexMujocoServerBase):
         HexMujocoServerBase.__init__(self, net_config)
 
         # mujoco
-        self._device = HexMujocoArcherY6(params_config)
+        self._device = HexMujocoArcherY6(
+            params_config, net_config.get("realtime_mode", False))
 
         # values
         self._states_robot_queue = deque(maxlen=self._deque_maxlen)

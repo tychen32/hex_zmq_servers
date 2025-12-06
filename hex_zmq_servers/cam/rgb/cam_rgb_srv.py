@@ -49,7 +49,8 @@ class HexCamRGBServer(HexCamServerBase):
         HexCamServerBase.__init__(self, net_config)
 
         # camera
-        self._device = HexCamRGB(params_config)
+        self._device = HexCamRGB(params_config,
+                                 net_config.get("realtime_mode", False))
 
     def _process_request(self, recv_hdr: dict, recv_buf: np.ndarray):
         if recv_hdr["cmd"] == "is_working":

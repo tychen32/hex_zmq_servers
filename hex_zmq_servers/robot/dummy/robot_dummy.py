@@ -30,8 +30,9 @@ class HexRobotDummy(HexRobotBase):
     def __init__(
         self,
         robot_config: dict = ROBOT_CONFIG,
+        realtime_mode: bool = False,
     ):
-        HexRobotBase.__init__(self)
+        HexRobotBase.__init__(self, realtime_mode)
 
         try:
             self._dofs = robot_config["dofs"]

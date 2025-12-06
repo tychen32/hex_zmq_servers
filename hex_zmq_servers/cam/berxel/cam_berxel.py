@@ -30,8 +30,9 @@ class HexCamBerxel(HexCamBase):
     def __init__(
         self,
         camera_config: dict = CAMERA_CONFIG,
+        realtime_mode: bool = False,
     ):
-        HexCamBase.__init__(self)
+        HexCamBase.__init__(self, realtime_mode)
 
         try:
             self.__serial_number = camera_config["serial_number"]

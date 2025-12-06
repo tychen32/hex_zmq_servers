@@ -33,8 +33,8 @@ TAU = 2 * np.pi
 
 class HexMujocoBase(HexDeviceBase):
 
-    def __init__(self):
-        HexDeviceBase.__init__(self)
+    def __init__(self, realtime_mode: bool = False):
+        HexDeviceBase.__init__(self, realtime_mode)
         self._dofs = None
         self._limits = None
         self._intri = None

@@ -50,7 +50,8 @@ class HexMujocoE3DesktopServer(HexMujocoServerBase):
         HexMujocoServerBase.__init__(self, net_config)
 
         # mujoco
-        self._device = HexMujocoE3Desktop(params_config)
+        self._device = HexMujocoE3Desktop(
+            params_config, net_config.get("realtime_mode", False))
 
         # values
         self._cmds_left_seq = -1

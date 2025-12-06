@@ -32,8 +32,9 @@ class HexCamRealsense(HexCamBase):
     def __init__(
         self,
         camera_config: dict = CAMERA_CONFIG,
+        realtime_mode: bool = False,
     ):
-        HexCamBase.__init__(self)
+        HexCamBase.__init__(self, realtime_mode)
 
         try:
             self.__serial_number = camera_config["serial_number"]
@@ -134,8 +135,9 @@ class HexCamRealsense(HexCamBase):
             color_frame = aligned_frames.get_color_frame()
             if color_frame:
 
-                rgb_queue.append((sen_ts if self.__sens_ts else cur_ns, rgb_count,
-                               np.asanyarray(color_frame.get_data())))
+                rgb_queue.append(
+                    (sen_ts if self.__sens_ts else cur_ns, rgb_count,
+                     np.asanyarray(color_frame.get_data())))
                 rgb_count = (rgb_count + 1) % self._max_seq_num
 
             # collect depth frame

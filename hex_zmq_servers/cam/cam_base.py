@@ -27,8 +27,8 @@ NET_CONFIG = {
 
 class HexCamBase(HexDeviceBase):
 
-    def __init__(self):
-        HexDeviceBase.__init__(self)
+    def __init__(self, realtime_mode: bool = False):
+        HexDeviceBase.__init__(self, realtime_mode)
 
     def __del__(self):
         HexDeviceBase.__del__(self)

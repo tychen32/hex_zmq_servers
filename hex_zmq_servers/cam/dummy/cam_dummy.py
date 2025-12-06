@@ -20,8 +20,8 @@ from ...hex_launch import hex_log, HEX_LOG_LEVEL
 
 class HexCamDummy(HexCamBase):
 
-    def __init__(self, params_config: dict = {}):
-        HexCamBase.__init__(self)
+    def __init__(self, params_config: dict = {}, realtime_mode: bool = False):
+        HexCamBase.__init__(self, realtime_mode)
         self._working.set()
 
     def __del__(self):

@@ -35,8 +35,9 @@ class HexCamRGB(HexCamBase):
     def __init__(
         self,
         camera_config: dict = CAMERA_CONFIG,
+        realtime_mode: bool = False,
     ):
-        HexCamBase.__init__(self)
+        HexCamBase.__init__(self, realtime_mode)
 
         try:
             self.__cam_path = camera_config["cam_path"]
@@ -106,8 +107,9 @@ class HexCamRGB(HexCamBase):
 
         rgb_count = 0
         depth_queue.append((hex_zmq_ts_now(), 0,
-                         np.zeros((self.__resolution[1], self.__resolution[0]),
-                                  dtype=np.uint16)))
+                            np.zeros(
+                                (self.__resolution[1], self.__resolution[0]),
+                                dtype=np.uint16)))
         rate = HexRate(self.__frame_rate * 5)
         while self._working.is_set() and not stop_event.is_set():
             # read frame
