@@ -15,9 +15,10 @@ from .zmq_base import MAX_SEQ_NUM
 
 class HexDeviceBase(ABC):
 
-    def __init__(self):
+    def __init__(self, realtime_mode: bool = False):
         # variables
         self._max_seq_num = MAX_SEQ_NUM
+        self._realtime_mode = realtime_mode
         # thread
         self._working = threading.Event()
 

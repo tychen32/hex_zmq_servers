@@ -5,11 +5,15 @@
     "hexarm_master_net_cfg": {
         "ip": "127.0.0.1",
         "port": 12345,
+        "realtime_mode": false,
+        "deque_maxlen": 10,
         "client_timeout_ms": 200
     },
     "hexarm_slave_net_cfg": {
         "ip": "127.0.0.1",
         "port": 12346,
+        "realtime_mode": false,
+        "deque_maxlen": 10,
         "client_timeout_ms": 200
     }
 }

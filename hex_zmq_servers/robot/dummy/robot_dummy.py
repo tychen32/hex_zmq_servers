@@ -64,7 +64,8 @@ class HexRobotDummy(HexRobotBase):
             # cmds
             cmds_pack = None
             try:
-                cmds_pack = cmds_queue.popleft()
+                cmds_pack = cmds_queue[
+                    -1] if self._realtime_mode else cmds_queue.popleft()
             except IndexError:
                 pass
             if cmds_pack is not None:

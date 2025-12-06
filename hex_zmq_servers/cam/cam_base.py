@@ -17,6 +17,8 @@ from ..zmq_base import HexZMQClientBase, HexZMQServerBase, HexRate
 NET_CONFIG = {
     "ip": "127.0.0.1",
     "port": 12345,
+    "realtime_mode": False,
+    "deque_maxlen": 10,
     "client_timeout_ms": 200,
     "server_timeout_ms": 1_000,
     "server_num_workers": 4,
@@ -48,23 +50,24 @@ class HexCamClientBase(HexZMQClientBase):
         HexZMQClientBase.__init__(self, net_config)
         self._rgb_seq = 0
         self._depth_seq = 0
-        self._rgb_queue = deque(maxlen=10)
-        self._depth_queue = deque(maxlen=10)
+        self._rgb_queue = deque(maxlen=self._deque_maxlen)
+        self._depth_queue = deque(maxlen=self._deque_maxlen)
 
     def __del__(self):
         HexZMQClientBase.__del__(self)
 
     def get_rgb(self, newest: bool = False):
         try:
-            return self._rgb_queue.popleft(
-            ) if not newest else self._rgb_queue[-1]
+            return self._rgb_queue[-1] if (
+                newest or self._realtime_mode) else self._rgb_queue.popleft()
         except IndexError:
             return None, None
 
     def get_depth(self, newest: bool = False):
         try:
-            return self._depth_queue.popleft(
-            ) if not newest else self._depth_queue[-1]
+            return self._depth_queue[-1] if (
+                newest
+                or self._realtime_mode) else self._depth_queue.popleft()
         except IndexError:
             return None, None
 
@@ -117,8 +120,8 @@ class HexCamServerBase(HexZMQServerBase):
     def __init__(self, net_config: dict = NET_CONFIG):
         HexZMQServerBase.__init__(self, net_config)
         self._device: HexDeviceBase = None
-        self._rgb_queue = deque(maxlen=10)
-        self._depth_queue = deque(maxlen=10)
+        self._rgb_queue = deque(maxlen=self._deque_maxlen)
+        self._depth_queue = deque(maxlen=self._deque_maxlen)
 
     def __del__(self):
         HexZMQServerBase.__del__(self)
@@ -143,9 +146,12 @@ class HexCamServerBase(HexZMQServerBase):
 
         try:
             if depth_flag:
-                ts, count, img = self._depth_queue.popleft()
+                ts, count, img = self._depth_queue[
+                    -1] if self._realtime_mode else self._depth_queue.popleft(
+                    )
             else:
-                ts, count, img = self._rgb_queue.popleft()
+                ts, count, img = self._rgb_queue[
+                    -1] if self._realtime_mode else self._rgb_queue.popleft()
         except IndexError:
             return {"cmd": f"{recv_hdr['cmd']}_failed"}, None
         except Exception as e:

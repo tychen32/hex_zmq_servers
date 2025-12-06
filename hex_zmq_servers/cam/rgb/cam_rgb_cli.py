@@ -12,6 +12,8 @@ from ...zmq_base import HexRate
 NET_CONFIG = {
     "ip": "127.0.0.1",
     "port": 12345,
+    "realtime_mode": False,
+    "deque_maxlen": 10,
     "client_timeout_ms": 200,
     "server_timeout_ms": 1_000,
     "server_num_workers": 4,

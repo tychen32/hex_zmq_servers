@@ -63,8 +63,9 @@ class HexRobotGello(HexRobotBase):
     def __init__(
         self,
         robot_config: dict = ROBOT_CONFIG,
+        realtime_mode: bool = False,
     ):
-        HexRobotBase.__init__(self)
+        HexRobotBase.__init__(self, realtime_mode)
 
         try:
             self.__idxs = np.array(robot_config["idxs"])
@@ -122,7 +123,8 @@ class HexRobotGello(HexRobotBase):
             # cmds
             cmds_pack = None
             try:
-                cmds_pack = cmds_queue.popleft()
+                cmds_pack = cmds_queue[
+                    -1] if self._realtime_mode else cmds_queue.popleft()
             except IndexError:
                 pass
             if cmds_pack is not None:

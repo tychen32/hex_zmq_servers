@@ -22,6 +22,8 @@ from ..zmq_base import (
 NET_CONFIG = {
     "ip": "127.0.0.1",
     "port": 12345,
+    "realtime_mode": False,
+    "deque_maxlen": 10,
     "client_timeout_ms": 200,
     "server_timeout_ms": 1_000,
     "server_num_workers": 4,
@@ -32,8 +34,8 @@ TAU = 2 * np.pi
 
 class HexRobotBase(HexDeviceBase):
 
-    def __init__(self):
-        HexDeviceBase.__init__(self)
+    def __init__(self, realtime_mode: bool = False):
+        HexDeviceBase.__init__(self, realtime_mode)
         self._dofs = None
         self._limits = None
         self._seq_clear_flag = False
@@ -99,8 +101,8 @@ class HexRobotClientBase(HexZMQClientBase):
         HexZMQClientBase.__init__(self, net_config)
         self._states_seq = 0
         self._cmds_seq = 0
-        self._states_queue = deque(maxlen=10)
-        self._cmds_queue = deque(maxlen=10)
+        self._states_queue = deque(maxlen=self._deque_maxlen)
+        self._cmds_queue = deque(maxlen=self._deque_maxlen)
 
     def __del__(self):
         HexZMQClientBase.__del__(self)
@@ -119,8 +121,9 @@ class HexRobotClientBase(HexZMQClientBase):
 
     def get_states(self, newest: bool = False):
         try:
-            return self._states_queue.popleft(
-            ) if not newest else self._states_queue[-1]
+            return self._states_queue[-1] if (
+                self._realtime_mode
+                or newest) else self._states_queue.popleft()
         except IndexError:
             return None, None
 
@@ -179,7 +182,8 @@ class HexRobotClientBase(HexZMQClientBase):
                 self._states_queue.append((hdr, states))
 
             try:
-                cmds = self._cmds_queue.popleft()
+                cmds = self._cmds_queue[
+                    -1] if self._realtime_mode else self._cmds_queue.popleft()
                 _ = self._set_cmds_inner(cmds)
             except IndexError:
                 pass
@@ -192,8 +196,8 @@ class HexRobotServerBase(HexZMQServerBase):
     def __init__(self, net_config: dict = NET_CONFIG):
         HexZMQServerBase.__init__(self, net_config)
         self._device: HexDeviceBase = None
-        self._states_queue = deque(maxlen=10)
-        self._cmds_queue = deque(maxlen=10)
+        self._states_queue = deque(maxlen=self._deque_maxlen)
+        self._cmds_queue = deque(maxlen=self._deque_maxlen)
         self._cmds_seq = -1
         self._seq_clear_flag = False
 
@@ -223,7 +227,8 @@ class HexRobotServerBase(HexZMQServerBase):
             return {"cmd": f"{recv_hdr['cmd']}_failed"}, None
 
         try:
-            ts, count, states = self._states_queue.popleft()
+            ts, count, states = self._states_queue[
+                -1] if self._realtime_mode else self._states_queue.popleft()
         except IndexError:
             return {"cmd": f"{recv_hdr['cmd']}_failed"}, None
         except Exception as e:

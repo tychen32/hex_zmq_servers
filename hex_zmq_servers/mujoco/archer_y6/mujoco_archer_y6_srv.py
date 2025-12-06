@@ -25,6 +25,8 @@ except (ImportError, ValueError):
 NET_CONFIG = {
     "ip": "127.0.0.1",
     "port": 12345,
+    "realtime_mode": False,
+    "deque_maxlen": 10,
     "client_timeout_ms": 200,
     "server_timeout_ms": 1_000,
     "server_num_workers": 4,
@@ -51,10 +53,10 @@ class HexMujocoArcherY6Server(HexMujocoServerBase):
         self._device = HexMujocoArcherY6(params_config)
 
         # values
-        self._states_robot_queue = deque(maxlen=10)
-        self._states_obj_queue = deque(maxlen=10)
-        self._rgb_queue = deque(maxlen=10)
-        self._depth_queue = deque(maxlen=10)
+        self._states_robot_queue = deque(maxlen=self._deque_maxlen)
+        self._states_obj_queue = deque(maxlen=self._deque_maxlen)
+        self._rgb_queue = deque(maxlen=self._deque_maxlen)
+        self._depth_queue = deque(maxlen=self._deque_maxlen)
 
     def work_loop(self):
         try:
@@ -87,7 +89,8 @@ class HexMujocoArcherY6Server(HexMujocoServerBase):
                 f"unknown robot name: {robot_name} in {recv_hdr['cmd']}")
 
         try:
-            ts, count, states = queue.popleft()
+            ts, count, states = queue[
+                -1] if self._realtime_mode else queue.popleft()
         except IndexError:
             return {"cmd": f"{recv_hdr['cmd']}_failed"}, None
         except Exception as e:

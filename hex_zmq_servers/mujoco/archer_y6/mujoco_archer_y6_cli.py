@@ -12,6 +12,8 @@ from ...zmq_base import HexRate
 NET_CONFIG = {
     "ip": "127.0.0.1",
     "port": 12345,
+    "realtime_mode": False,
+    "deque_maxlen": 10,
     "client_timeout_ms": 200,
     "server_timeout_ms": 1_000,
     "server_num_workers": 4,
@@ -60,7 +62,8 @@ class HexMujocoArcherY6Client(HexMujocoClientBase):
                         self._depth_queue.append((hdr, img))
 
             try:
-                cmds = self._cmds_queue.popleft()
+                cmds = self._cmds_queue[
+                    -1] if self._realtime_mode else self._cmds_queue.popleft()
                 _ = self._set_cmds_inner(cmds)
             except IndexError:
                 pass

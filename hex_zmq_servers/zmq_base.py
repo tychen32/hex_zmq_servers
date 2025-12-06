@@ -14,6 +14,7 @@ import numpy as np
 from abc import ABC, abstractmethod
 
 MAX_SEQ_NUM = int(1e12)
+MAX_DEQUE_LEN = 10
 
 ################################################################
 # Time Related
@@ -146,6 +147,8 @@ class HexRate:
 NET_CONFIG = {
     "ip": "127.0.0.1",
     "port": 12345,
+    "realtime_mode": False,
+    "deque_maxlen": 10,
     "client_timeout_ms": 200,
     "server_timeout_ms": 1_000,
     "server_num_workers": 4,
@@ -156,6 +159,11 @@ class HexZMQClientBase(ABC):
 
     def __init__(self, net_config: dict = NET_CONFIG):
         self._max_seq_num = MAX_SEQ_NUM
+        self._realtime_mode = net_config.get("realtime_mode", False)
+        self._deque_maxlen = max(
+            1,
+            net_config.get("deque_maxlen", MAX_DEQUE_LEN),
+        )
         try:
             port = net_config["port"]
             ip = net_config["ip"]
@@ -298,6 +306,11 @@ class HexZMQServerBase(ABC):
         net_config: dict = NET_CONFIG,
     ):
         self._max_seq_num = MAX_SEQ_NUM
+        self._realtime_mode = net_config.get("realtime_mode", False)
+        self._deque_maxlen = max(
+            1,
+            net_config.get("deque_maxlen", MAX_DEQUE_LEN),
+        )
         try:
             port = net_config["port"]
             ip = net_config["ip"]

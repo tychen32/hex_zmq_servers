@@ -14,6 +14,8 @@ from ..mujoco_base import HexMujocoClientBase
 NET_CONFIG = {
     "ip": "127.0.0.1",
     "port": 12345,
+    "realtime_mode": False,
+    "deque_maxlen": 10,
     "client_timeout_ms": 200,
     "server_timeout_ms": 1_000,
     "server_num_workers": 4,
@@ -51,21 +53,21 @@ class HexMujocoE3DesktopClient(HexMujocoClientBase):
             "right_depth": 0,
         }
         self._states_queue = {
-            "left": deque(maxlen=10),
-            "right": deque(maxlen=10),
-            "obj": deque(maxlen=10),
+            "left": deque(maxlen=self._deque_maxlen),
+            "right": deque(maxlen=self._deque_maxlen),
+            "obj": deque(maxlen=self._deque_maxlen),
         }
         self._camera_queue = {
-            "head_rgb": deque(maxlen=10),
-            "head_depth": deque(maxlen=10),
-            "left_rgb": deque(maxlen=10),
-            "left_depth": deque(maxlen=10),
-            "right_rgb": deque(maxlen=10),
-            "right_depth": deque(maxlen=10),
+            "head_rgb": deque(maxlen=self._deque_maxlen),
+            "head_depth": deque(maxlen=self._deque_maxlen),
+            "left_rgb": deque(maxlen=self._deque_maxlen),
+            "left_depth": deque(maxlen=self._deque_maxlen),
+            "right_rgb": deque(maxlen=self._deque_maxlen),
+            "right_depth": deque(maxlen=self._deque_maxlen),
         }
         self._cmds_queue = {
-            "left": deque(maxlen=10),
-            "right": deque(maxlen=10),
+            "left": deque(maxlen=self._deque_maxlen),
+            "right": deque(maxlen=self._deque_maxlen),
         }
         self._wait_for_working()
 
@@ -87,8 +89,9 @@ class HexMujocoE3DesktopClient(HexMujocoClientBase):
     def get_rgb(self, camera_name: str | None = None, newest: bool = False):
         name = f"{camera_name}_rgb"
         try:
-            return self._camera_queue[name].popleft(
-            ) if not newest else self._camera_queue[name][-1]
+            return self._camera_queue[name][-1] if (
+                newest or
+                self._realtime_mode) else self._camera_queue[name].popleft()
         except IndexError:
             return None, None
         except KeyError:
@@ -98,8 +101,9 @@ class HexMujocoE3DesktopClient(HexMujocoClientBase):
     def get_depth(self, camera_name: str | None = None, newest: bool = False):
         name = f"{camera_name}_depth"
         try:
-            return self._camera_queue[name].popleft(
-            ) if not newest else self._camera_queue[name][-1]
+            return self._camera_queue[name][-1] if (
+                newest or
+                self._realtime_mode) else self._camera_queue[name].popleft()
         except IndexError:
             return None, None
         except KeyError:
@@ -220,12 +224,16 @@ class HexMujocoE3DesktopClient(HexMujocoClientBase):
                         self._camera_queue["right_depth"].append((hdr, img))
 
             try:
-                cmds = self._cmds_queue["left"].popleft()
+                cmds = self._cmds_queue["left"][
+                    -1] if self._realtime_mode else self._cmds_queue[
+                        "left"].popleft()
                 _ = self._set_cmds_inner(cmds, "left")
             except IndexError:
                 pass
             try:
-                cmds = self._cmds_queue["right"].popleft()
+                cmds = self._cmds_queue["right"][
+                    -1] if self._realtime_mode else self._cmds_queue[
+                        "right"].popleft()
                 _ = self._set_cmds_inner(cmds, "right")
             except IndexError:
                 pass

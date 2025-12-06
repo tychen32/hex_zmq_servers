@@ -21,6 +21,8 @@ from ..zmq_base import (
 NET_CONFIG = {
     "ip": "127.0.0.1",
     "port": 12345,
+    "realtime_mode": False,
+    "deque_maxlen": 10,
     "client_timeout_ms": 200,
     "server_timeout_ms": 1_000,
     "server_num_workers": 4,
@@ -108,12 +110,12 @@ class HexMujocoClientBase(HexZMQClientBase):
         self._rgb_seq = 0
         self._depth_seq = 0
         self._states_queue = {
-            "robot": deque(maxlen=10),
-            "obj": deque(maxlen=10),
+            "robot": deque(maxlen=self._max_seq_num),
+            "obj": deque(maxlen=self._max_seq_num),
         }
-        self._rgb_queue = deque(maxlen=10)
-        self._depth_queue = deque(maxlen=10)
-        self._cmds_queue = deque(maxlen=10)
+        self._rgb_queue = deque(maxlen=self._deque_maxlen)
+        self._depth_queue = deque(maxlen=self._deque_maxlen)
+        self._cmds_queue = deque(maxlen=self._deque_maxlen)
 
     def __del__(self):
         HexZMQClientBase.__del__(self)
@@ -142,8 +144,9 @@ class HexMujocoClientBase(HexZMQClientBase):
 
     def get_states(self, robot_name: str | None = None, newest: bool = False):
         try:
-            return self._states_queue[robot_name].popleft(
-            ) if not newest else self._states_queue[robot_name][-1]
+            return self._states_queue[robot_name][-1] if (
+                newest or self._realtime_mode
+            ) else self._states_queue[robot_name].popleft()
         except IndexError:
             return None, None
         except KeyError:
@@ -152,15 +155,16 @@ class HexMujocoClientBase(HexZMQClientBase):
 
     def get_rgb(self, camera_name: str | None = None, newest: bool = False):
         try:
-            return self._rgb_queue.popleft(
-            ) if not newest else self._rgb_queue[-1]
+            return self._rgb_queue[-1] if (
+                newest or self._realtime_mode) else self._rgb_queue.popleft()
         except IndexError:
             return None, None
 
     def get_depth(self, camera_name: str | None = None, newest: bool = False):
         try:
-            return self._depth_queue.popleft(
-            ) if not newest else self._depth_queue[-1]
+            return self._depth_queue[-1] if (
+                newest
+                or self._realtime_mode) else self._depth_queue.popleft()
         except IndexError:
             return None, None
 
@@ -267,12 +271,12 @@ class HexMujocoServerBase(HexZMQServerBase):
     def __init__(self, net_config: dict = NET_CONFIG):
         HexZMQServerBase.__init__(self, net_config)
         self._device: HexDeviceBase = None
-        self._states_queue = deque(maxlen=10)
-        self._obj_pose_queue = deque(maxlen=10)
-        self._cmds_queue = deque(maxlen=10)
+        self._states_queue = deque(maxlen=self._deque_maxlen)
+        self._obj_pose_queue = deque(maxlen=self._deque_maxlen)
+        self._cmds_queue = deque(maxlen=self._deque_maxlen)
         self._cmds_seq = -1
-        self._rgb_queue = deque(maxlen=10)
-        self._depth_queue = deque(maxlen=10)
+        self._rgb_queue = deque(maxlen=self._deque_maxlen)
+        self._depth_queue = deque(maxlen=self._deque_maxlen)
         self._seq_clear_flag = False
 
     def work_loop(self):
@@ -300,7 +304,8 @@ class HexMujocoServerBase(HexZMQServerBase):
             return {"cmd": f"{recv_hdr['cmd']}_failed"}, None
 
         try:
-            ts, count, states = self._states_queue.popleft()
+            ts, count, states = self._states_queue[
+                -1] if self._realtime_mode else self._states_queue.popleft()
         except IndexError:
             return {"cmd": f"{recv_hdr['cmd']}_failed"}, None
         except Exception as e:
@@ -348,9 +353,12 @@ class HexMujocoServerBase(HexZMQServerBase):
 
         try:
             if depth_flag:
-                ts, count, img = self._depth_queue.popleft()
+                ts, count, img = self._depth_queue[
+                    -1] if self._realtime_mode else self._depth_queue.popleft(
+                    )
             else:
-                ts, count, img = self._rgb_queue.popleft()
+                ts, count, img = self._rgb_queue[
+                    -1] if self._realtime_mode else self._rgb_queue.popleft()
         except IndexError:
             return {"cmd": f"{recv_hdr['cmd']}_failed"}, None
         except Exception as e:

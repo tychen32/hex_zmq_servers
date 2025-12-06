@@ -49,8 +49,9 @@ class HexMujocoArcherY6(HexMujocoBase):
     def __init__(
         self,
         mujoco_config: dict = MUJOCO_CONFIG,
+        realtime_mode: bool = False,
     ):
-        HexMujocoBase.__init__(self)
+        HexMujocoBase.__init__(self, realtime_mode)
 
         try:
             states_rate = mujoco_config["states_rate"]
@@ -163,11 +164,11 @@ class HexMujocoArcherY6(HexMujocoBase):
         self.__bias_ns = hex_ns_now() - self.__data.time * 1_000_000_000
         init_ts = self.__mujoco_ts() if self.__sens_ts else hex_zmq_ts_now()
         rgb_queue.append((init_ts, 0,
-                       np.zeros((self.__height, self.__width, 3),
-                                dtype=np.uint8)))
+                          np.zeros((self.__height, self.__width, 3),
+                                   dtype=np.uint8)))
         depth_queue.append((init_ts, 0,
-                         np.zeros((self.__height, self.__width),
-                                  dtype=np.uint16)))
+                            np.zeros((self.__height, self.__width),
+                                     dtype=np.uint16)))
         while self._working.is_set() and not stop_event.is_set():
             states_trig_count += 1
             if states_trig_count >= self.__states_trig_thresh:
@@ -194,7 +195,9 @@ class HexMujocoArcherY6(HexMujocoBase):
                 # cmds
                 cmds_robot_pack = None
                 try:
-                    cmds_robot_pack = cmds_robot_queue.popleft()
+                    cmds_robot_pack = cmds_robot_queue[
+                        -1] if self._realtime_mode else cmds_robot_queue.popleft(
+                        )
                 except IndexError:
                     pass
                 if cmds_robot_pack is not None:
