@@ -100,6 +100,7 @@ class HexRobotClientBase(HexZMQClientBase):
     def __init__(self, net_config: dict = NET_CONFIG):
         HexZMQClientBase.__init__(self, net_config)
         self._states_seq = 0
+        self._used_states_seq = 0
         self._cmds_seq = 0
         self._states_queue = deque(maxlen=self._deque_maxlen)
         self._cmds_queue = deque(maxlen=self._deque_maxlen)
@@ -121,9 +122,15 @@ class HexRobotClientBase(HexZMQClientBase):
 
     def get_states(self, newest: bool = False):
         try:
-            return self._states_queue[-1] if (
-                self._realtime_mode
-                or newest) else self._states_queue.popleft()
+            if self._realtime_mode or newest:
+                hdr, states = self._states_queue[-1]
+                if self._used_states_seq != hdr["args"]:
+                    self._used_states_seq = hdr["args"]
+                    return hdr, states
+                else:
+                    return None, None
+            else:
+                return self._states_queue.popleft()
         except IndexError:
             return None, None
 

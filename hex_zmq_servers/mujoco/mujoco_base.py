@@ -104,28 +104,54 @@ class HexMujocoClientBase(HexZMQClientBase):
 
     def __init__(self, net_config: dict = NET_CONFIG):
         HexZMQClientBase.__init__(self, net_config)
-        self._states_seq = 0
-        self._obj_pose_seq = 0
-        self._cmds_seq = 0
-        self._rgb_seq = 0
-        self._depth_seq = 0
+        self._states_seq = {
+            "robot": 0,
+            "obj": 0,
+        }
+        self._used_states_queue = {
+            "robot": 0,
+            "obj": 0,
+        }
         self._states_queue = {
             "robot": deque(maxlen=self._max_seq_num),
             "obj": deque(maxlen=self._max_seq_num),
         }
-        self._rgb_queue = deque(maxlen=self._deque_maxlen)
-        self._depth_queue = deque(maxlen=self._deque_maxlen)
+        self._camera_seq = {
+            "rgb": 0,
+            "depth": 0,
+        }
+        self._used_camera_seq = {
+            "rgb": 0,
+            "depth": 0,
+        }
+        self._camera_queue = {
+            "rgb": deque(maxlen=self._deque_maxlen),
+            "depth": deque(maxlen=self._deque_maxlen),
+        }
+        self._cmds_seq = 0
         self._cmds_queue = deque(maxlen=self._deque_maxlen)
 
     def __del__(self):
         HexZMQClientBase.__del__(self)
 
     def reset(self):
-        self._states_seq = 0
-        self._obj_pose_seq = 0
+        self._states_seq = {
+            "robot": 0,
+            "obj": 0,
+        }
+        self._used_states_queue = {
+            "robot": 0,
+            "obj": 0,
+        }
+        self._camera_seq = {
+            "rgb": 0,
+            "depth": 0,
+        }
+        self._used_camera_seq = {
+            "rgb": 0,
+            "depth": 0,
+        }
         self._cmds_seq = 0
-        self._rgb_seq = 0
-        self._depth_seq = 0
 
         hdr, _ = self.request({"cmd": "reset"})
         return hdr
@@ -144,9 +170,15 @@ class HexMujocoClientBase(HexZMQClientBase):
 
     def get_states(self, robot_name: str | None = None, newest: bool = False):
         try:
-            return self._states_queue[robot_name][-1] if (
-                newest or self._realtime_mode
-            ) else self._states_queue[robot_name].popleft()
+            if self._realtime_mode or newest:
+                hdr, states = self._states_queue[robot_name][-1]
+                if self._used_states_queue[robot_name] != hdr["args"]:
+                    self._used_states_queue[robot_name] = hdr["args"]
+                    return hdr, states
+                else:
+                    return None, None
+            else:
+                return self._states_queue[robot_name].popleft()
         except IndexError:
             return None, None
         except KeyError:
@@ -155,16 +187,29 @@ class HexMujocoClientBase(HexZMQClientBase):
 
     def get_rgb(self, camera_name: str | None = None, newest: bool = False):
         try:
-            return self._rgb_queue[-1] if (
-                newest or self._realtime_mode) else self._rgb_queue.popleft()
+            if self._realtime_mode or newest:
+                hdr, img = self._camera_queue["rgb"][-1]
+                if self._used_camera_seq["rgb"] != hdr["args"]:
+                    self._used_camera_seq["rgb"] = hdr["args"]
+                    return hdr, img
+                else:
+                    return None, None
+            else:
+                return self._camera_queue["rgb"].popleft()
         except IndexError:
             return None, None
 
     def get_depth(self, camera_name: str | None = None, newest: bool = False):
         try:
-            return self._depth_queue[-1] if (
-                newest
-                or self._realtime_mode) else self._depth_queue.popleft()
+            if self._realtime_mode or newest:
+                hdr, img = self._camera_queue["depth"][-1]
+                if self._used_camera_seq["depth"] != hdr["args"]:
+                    self._used_camera_seq["depth"] = hdr["args"]
+                    return hdr, img
+                else:
+                    return None, None
+            else:
+                return self._camera_queue["depth"].popleft()
         except IndexError:
             return None, None
 
@@ -193,7 +238,7 @@ class HexMujocoClientBase(HexZMQClientBase):
         hdr, img = self.request({
             "cmd":
             req_cmd,
-            "args": (1 + (self._depth_seq if depth_flag else self._rgb_seq)) %
+            "args": (1 + self._camera_seq['depth' if depth_flag else 'rgb']) %
             self._max_seq_num,
         })
 
@@ -221,12 +266,11 @@ class HexMujocoClientBase(HexZMQClientBase):
         hdr, states = self.request({
             "cmd":
             req_cmd,
-            "args": (1 + self._states_seq) % self._max_seq_num,
+            "args": (1 + self._states_seq[robot_name]) % self._max_seq_num,
         })
         try:
-            cmd = hdr["cmd"]
-            if cmd == f"{req_cmd}_ok":
-                self._states_seq = hdr["args"]
+            if hdr["cmd"] == f"{req_cmd}_ok":
+                self._states_seq[robot_name] = hdr["args"]
                 return hdr, states
             else:
                 return None, None

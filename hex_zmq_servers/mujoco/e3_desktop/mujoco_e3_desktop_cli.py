@@ -40,9 +40,20 @@ class HexMujocoE3DesktopClient(HexMujocoClientBase):
     ):
         HexMujocoClientBase.__init__(self, net_config)
         self.__recv_config = recv_config
-        self._cmds_seq = {
+        self._states_seq = {
             "left": 0,
             "right": 0,
+            "obj": 0,
+        }
+        self._used_states_queue = {
+            "left": 0,
+            "right": 0,
+            "obj": 0,
+        }
+        self._states_queue = {
+            "left": deque(maxlen=self._deque_maxlen),
+            "right": deque(maxlen=self._deque_maxlen),
+            "obj": deque(maxlen=self._deque_maxlen),
         }
         self._camera_seq = {
             "head_rgb": 0,
@@ -52,10 +63,13 @@ class HexMujocoE3DesktopClient(HexMujocoClientBase):
             "right_rgb": 0,
             "right_depth": 0,
         }
-        self._states_queue = {
-            "left": deque(maxlen=self._deque_maxlen),
-            "right": deque(maxlen=self._deque_maxlen),
-            "obj": deque(maxlen=self._deque_maxlen),
+        self._used_camera_seq = {
+            "head_rgb": 0,
+            "head_depth": 0,
+            "left_rgb": 0,
+            "left_depth": 0,
+            "right_rgb": 0,
+            "right_depth": 0,
         }
         self._camera_queue = {
             "head_rgb": deque(maxlen=self._deque_maxlen),
@@ -65,6 +79,10 @@ class HexMujocoE3DesktopClient(HexMujocoClientBase):
             "right_rgb": deque(maxlen=self._deque_maxlen),
             "right_depth": deque(maxlen=self._deque_maxlen),
         }
+        self._cmds_seq = {
+            "left": 0,
+            "right": 0,
+        }
         self._cmds_queue = {
             "left": deque(maxlen=self._deque_maxlen),
             "right": deque(maxlen=self._deque_maxlen),
@@ -73,9 +91,15 @@ class HexMujocoE3DesktopClient(HexMujocoClientBase):
 
     def reset(self):
         HexMujocoClientBase.reset(self)
-        self._cmds_seq = {
+        self._states_seq = {
             "left": 0,
             "right": 0,
+            "obj": 0,
+        }
+        self._used_states_queue = {
+            "left": 0,
+            "right": 0,
+            "obj": 0,
         }
         self._camera_seq = {
             "head_rgb": 0,
@@ -85,13 +109,31 @@ class HexMujocoE3DesktopClient(HexMujocoClientBase):
             "right_rgb": 0,
             "right_depth": 0,
         }
+        self._used_camera_seq = {
+            "head_rgb": 0,
+            "head_depth": 0,
+            "left_rgb": 0,
+            "left_depth": 0,
+            "right_rgb": 0,
+            "right_depth": 0,
+        }
+        self._cmds_seq = {
+            "left": 0,
+            "right": 0,
+        }
 
     def get_rgb(self, camera_name: str | None = None, newest: bool = False):
         name = f"{camera_name}_rgb"
         try:
-            return self._camera_queue[name][-1] if (
-                newest or
-                self._realtime_mode) else self._camera_queue[name].popleft()
+            if self._realtime_mode or newest:
+                hdr, img = self._camera_queue[name][-1]
+                if self._used_camera_seq[name] != hdr["args"]:
+                    self._used_camera_seq[name] = hdr["args"]
+                    return hdr, img
+                else:
+                    return None, None
+            else:
+                return self._camera_queue[name].popleft()
         except IndexError:
             return None, None
         except KeyError:
@@ -101,9 +143,15 @@ class HexMujocoE3DesktopClient(HexMujocoClientBase):
     def get_depth(self, camera_name: str | None = None, newest: bool = False):
         name = f"{camera_name}_depth"
         try:
-            return self._camera_queue[name][-1] if (
-                newest or
-                self._realtime_mode) else self._camera_queue[name].popleft()
+            if self._realtime_mode or newest:
+                hdr, img = self._camera_queue[name][-1]
+                if self._used_camera_seq[name] != hdr["args"]:
+                    self._used_camera_seq[name] = hdr["args"]
+                    return hdr, img
+                else:
+                    return None, None
+            else:
+                return self._camera_queue[name].popleft()
         except IndexError:
             return None, None
         except KeyError:

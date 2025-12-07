@@ -49,7 +49,9 @@ class HexCamClientBase(HexZMQClientBase):
     def __init__(self, net_config: dict = NET_CONFIG):
         HexZMQClientBase.__init__(self, net_config)
         self._rgb_seq = 0
+        self._used_rgb_seq = 0
         self._depth_seq = 0
+        self._used_depth_seq = 0
         self._rgb_queue = deque(maxlen=self._deque_maxlen)
         self._depth_queue = deque(maxlen=self._deque_maxlen)
 
@@ -58,16 +60,29 @@ class HexCamClientBase(HexZMQClientBase):
 
     def get_rgb(self, newest: bool = False):
         try:
-            return self._rgb_queue[-1] if (
-                newest or self._realtime_mode) else self._rgb_queue.popleft()
+            if self._realtime_mode or newest:
+                hdr, img = self._rgb_queue[-1]
+                if self._used_rgb_seq != hdr["args"]:
+                    self._used_rgb_seq = hdr["args"]
+                    return hdr, img
+                else:
+                    return None, None
+            else:
+                return self._rgb_queue.popleft()
         except IndexError:
             return None, None
 
     def get_depth(self, newest: bool = False):
         try:
-            return self._depth_queue[-1] if (
-                newest
-                or self._realtime_mode) else self._depth_queue.popleft()
+            if self._realtime_mode or newest:
+                hdr, img = self._depth_queue[-1]
+                if self._used_depth_seq != hdr["args"]:
+                    self._used_depth_seq = hdr["args"]
+                    return hdr, img
+                else:
+                    return None, None
+            else:
+                return self._depth_queue.popleft()
         except IndexError:
             return None, None
 
