@@ -42,7 +42,7 @@ def main():
     hex_log(HEX_LOG_LEVEL["info"], f"limits: {limits}")
 
     # get states and set cmds
-    rate = HexRate(500)
+    rate = HexRate(1000)
     while True:
         states_hdr, states = client.get_states()
         if states_hdr is not None:
