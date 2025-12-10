@@ -6,7 +6,7 @@
 # Date  : 2025-09-25
 ################################################################
 
-import argparse, json, time
+import argparse, json
 from hex_zmq_servers import (
     HexRate,
     hex_zmq_ts_now,
@@ -43,23 +43,15 @@ def main():
         raise ValueError(
             f"berxel_cam_config is not valid, missing key: {missing_key}")
 
-    # wait for camera to work
+    # camera client
     client = HexCamBerxelClient(net_config=net_config)
-    for i in range(30):
-        hex_log(HEX_LOG_LEVEL["info"],
-                f"waiting for camera to work: {i * 0.5}s")
-        working = client.is_working()
-        if working is not None and working["cmd"] == "is_working_ok":
-            break
-        else:
-            time.sleep(0.5)
 
     # get intrinsic params
-    intri = client.get_intri()
+    _, intri = client.get_intri()
     hex_log(HEX_LOG_LEVEL["info"], f"intri: {intri}")
 
     # get rgb and depth
-    rate = HexRate(100)
+    rate = HexRate(200)
     try:
         while True:
             depth_hdr, depth_img = client.get_depth()

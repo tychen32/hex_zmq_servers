@@ -6,27 +6,86 @@
 # Date  : 2025-09-12
 ################################################################
 
-import os
-import time
-import zmq
+import os, signal, json
+import time, ctypes, ctypes.util
 import threading
-import json
+import zmq
 import numpy as np
 from abc import ABC, abstractmethod
 
 MAX_SEQ_NUM = int(1e12)
+MAX_DEQUE_LEN = 10
 
 ################################################################
 # Time Related
 ################################################################
 
 
-def hex_zmq_ts_now() -> dict:
-    t_ns = time.time_ns()
+class SingletonMeta(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super().__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+
+class HexTimeManager(metaclass=SingletonMeta):
+
+    class timespec(ctypes.Structure):
+        _fields_ = [("tv_sec", ctypes.c_long), ("tv_nsec", ctypes.c_long)]
+
+    def __init__(self):
+        self.__use_ptp = False
+        ptp_path = os.getenv("HEX_PTP_CLOCK", None)
+        if ptp_path is not None:
+            self.__fd = os.open(ptp_path, os.O_RDONLY | os.O_CLOEXEC)
+            self.__clock_id = ((~self.__fd) << 3) | 3
+            self.__libc = ctypes.CDLL(
+                ctypes.util.find_library("c"),
+                use_errno=True,
+            )
+            self.__use_ptp = True
+            print(f"Using PTP clock from {ptp_path}")
+        else:
+            print("Using system clock")
+
+    def __del__(self):
+        if self.__use_ptp:
+            os.close(self.__fd)
+
+    def get_now_ns(self) -> int:
+        if self.__use_ptp:
+            ts = self.timespec()
+            if self.__libc.clock_gettime(self.__clock_id,
+                                         ctypes.byref(ts)) != 0:
+                err = ctypes.get_errno()
+                raise OSError(err, os.strerror(err))
+            return ts.tv_sec * 1_000_000_000 + ts.tv_nsec
+        else:
+            return time.perf_counter_ns()
+
+
+_HEX_TIME_MANAGER = HexTimeManager()
+
+
+def hex_zmq_ts_to_ns(ts: dict) -> int:
+    return ts['s'] * 1_000_000_000 + ts['ns']
+
+
+def ns_to_hex_zmq_ts(ns: int) -> dict:
     return {
-        "s": t_ns // 1_000_000_000,
-        "ns": t_ns % 1_000_000_000,
+        "s": ns // 1_000_000_000,
+        "ns": ns % 1_000_000_000,
     }
+
+
+def hex_ns_now() -> int:
+    return _HEX_TIME_MANAGER.get_now_ns()
+
+
+def hex_zmq_ts_now() -> dict:
+    return ns_to_hex_zmq_ts(hex_ns_now())
 
 
 def hex_zmq_ts_delta_ms(curr_ts, hdr_ts) -> float:
@@ -41,59 +100,55 @@ def hex_zmq_ts_delta_ms(curr_ts, hdr_ts) -> float:
 
 class HexRate:
 
-    def __init__(self, hz: float):
+    def __init__(self, hz: float, spin_threshold_ns: int = 10_000):
         if hz <= 0:
             raise ValueError("hz must be greater than 0")
+        if spin_threshold_ns < 0:
+            raise ValueError("spin_threshold_ns must be non-negative")
         self.__period_ns = int(1_000_000_000 / hz)
         self.__next_ns = self.__now_ns() + self.__period_ns
+        self.__spin_threshold_ns = spin_threshold_ns
 
     @staticmethod
     def __now_ns() -> int:
-        return time.perf_counter_ns()
+        return hex_ns_now()
 
     def reset(self):
         self.__next_ns = self.__now_ns() + self.__period_ns
 
     def sleep(self):
-        start_ns = self.__now_ns()
-        remain_ns = self.__next_ns - start_ns
-        if remain_ns > 0:
-            time.sleep(remain_ns / 1_000_000_000.0)
-            self.__next_ns += self.__period_ns
-        else:
-            needed_period = (start_ns - self.__next_ns) // self.__period_ns + 1
+        target_ns = self.__next_ns
+        now_ns = self.__now_ns()
+        remain_ns = target_ns - now_ns
+        if remain_ns <= 0:
+            needed_period = (now_ns - target_ns) // self.__period_ns + 1
             self.__next_ns += needed_period * self.__period_ns
+            return
+
+        spin_threshold = min(self.__spin_threshold_ns, self.__period_ns)
+        coarse_sleep_ns = remain_ns - spin_threshold
+        if coarse_sleep_ns > 0:
+            time.sleep(coarse_sleep_ns / 1_000_000_000.0)
+
+        while True:
+            now_ns = self.__now_ns()
+            if now_ns >= target_ns:
+                break
+            if target_ns - now_ns > 50_000:
+                time.sleep(0)
+
+        self.__next_ns += self.__period_ns
 
 
 ################################################################
 # ZMQ Related
 ################################################################
 
-
-class HexSafeValue:
-
-    def __init__(self):
-        self.__value = None
-        self.__ready = threading.Event()
-        self.__lock = threading.Lock()
-
-    def set(self, value):
-        with self.__lock:
-            self.__value = value
-            self.__ready.set()
-
-    def get(self, timeout_s=1.0):
-        if (not self.__ready.is_set()) and timeout_s > 0.0:
-            print(f"no value yet, waiting for {timeout_s}s")
-            self.__ready.wait(timeout_s)
-
-        with self.__lock:
-            return self.__value
-
-
 NET_CONFIG = {
     "ip": "127.0.0.1",
     "port": 12345,
+    "realtime_mode": False,
+    "deque_maxlen": 10,
     "client_timeout_ms": 200,
     "server_timeout_ms": 1_000,
     "server_num_workers": 4,
@@ -104,6 +159,11 @@ class HexZMQClientBase(ABC):
 
     def __init__(self, net_config: dict = NET_CONFIG):
         self._max_seq_num = MAX_SEQ_NUM
+        self._realtime_mode = net_config.get("realtime_mode", False)
+        self._deque_maxlen = max(
+            1,
+            net_config.get("deque_maxlen", MAX_DEQUE_LEN),
+        )
         try:
             port = net_config["port"]
             ip = net_config["ip"]
@@ -120,6 +180,13 @@ class HexZMQClientBase(ABC):
         self._socket = None
         self._lock = threading.Lock()
         self.__make_socket()
+
+        # receive thread
+        self._recv_thread = threading.Thread(
+            target=self._recv_loop,
+            daemon=True,
+        )
+        self._recv_flag = False
 
     def __del__(self):
         self.close()
@@ -155,9 +222,12 @@ class HexZMQClientBase(ABC):
                 self.__make_socket()
             return resp_hdr, resp_buf
 
-    def is_working(self):
+    def is_working(self) -> bool:
         working_hdr, _ = self.request({"cmd": "is_working"})
-        return working_hdr
+        if working_hdr is None:
+            return False
+        else:
+            return working_hdr["cmd"] == "is_working_ok"
 
     def __send_req(self, req_dict: dict, req_buf: np.ndarray | None = None):
         # construct send header
@@ -204,11 +274,29 @@ class HexZMQClientBase(ABC):
             return None, None
 
     def close(self):
+        self._recv_flag = False
+        self._recv_thread.join()
         if self._socket is not None:
             try:
                 self._socket.close(0)
             except Exception:
                 pass
+
+    def _wait_for_working(self, timeout: float = 5.0):
+        for _ in range(int(timeout * 10)):
+            if self.is_working():
+                if hasattr(self, "seq_clear"):
+                    self.seq_clear()
+                break
+            else:
+                time.sleep(0.1)
+        self._recv_flag = True
+        self._recv_thread.start()
+
+    @abstractmethod
+    def _recv_loop(self):
+        raise NotImplementedError(
+            "`_receive_thread` should be implemented by the child class")
 
 
 class HexZMQServerBase(ABC):
@@ -218,6 +306,11 @@ class HexZMQServerBase(ABC):
         net_config: dict = NET_CONFIG,
     ):
         self._max_seq_num = MAX_SEQ_NUM
+        self._realtime_mode = net_config.get("realtime_mode", False)
+        self._deque_maxlen = max(
+            1,
+            net_config.get("deque_maxlen", MAX_DEQUE_LEN),
+        )
         try:
             port = net_config["port"]
             ip = net_config["ip"]
@@ -373,8 +466,26 @@ def hex_server_helper(cfg: dict, server_cls: type):
         raise ValueError(f"cfg is not valid, missing key: {missing_key}")
 
     server = server_cls(net, params)
-    server.start()
-    server.work_loop()
+
+    shutdown_flag = False
+
+    def signal_handler(signum, frame):
+        nonlocal shutdown_flag
+        if not shutdown_flag:
+            shutdown_flag = True
+            print(
+                f"[server] Received signal {signal.Signals(signum).name}, shutting down..."
+            )
+            server._stop_event.set()
+
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
+
+    try:
+        server.start()
+        server.work_loop()
+    finally:
+        server.close()
 
 
 ################################################################
@@ -407,7 +518,7 @@ class HexZMQDummyServer(HexZMQServerBase):
 
     def work_loop(self):
         try:
-            while True:
+            while not self._stop_event.is_set():
                 time.sleep(1)
         finally:
             self.close()

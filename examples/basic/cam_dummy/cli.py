@@ -6,7 +6,7 @@
 # Date  : 2025-09-25
 ################################################################
 
-import argparse, json, time
+import argparse, json
 from hex_zmq_servers import (
     HexRate,
     hex_zmq_ts_now,
@@ -32,18 +32,10 @@ def main():
         raise ValueError(
             f"dummy_cam_config is not valid, missing key: {missing_key}")
 
-    # wait for camera to work
+    # camera client
     client = HexCamDummyClient(net_config=net_config)
-    for i in range(3):
-        hex_log(HEX_LOG_LEVEL["info"],
-                f"waiting for camera to work: {i * 0.5}s")
-        working = client.is_working()
-        if working is not None and working["cmd"] == "is_working_ok":
-            break
-        else:
-            time.sleep(0.5)
 
-    rate = HexRate(100)
+    rate = HexRate(200)
     try:
         while True:
             rgb_hdr, rgb_img = client.get_rgb()

@@ -63,8 +63,9 @@ POSE_END_IN_STABLE = [
 
 def wait_client_working(client, timeout: float = 5.0) -> bool:
     for _ in range(int(timeout * 10)):
-        working = client.is_working()
-        if working is not None and working["cmd"] == "is_working_ok":
+        if client.is_working():
+            if hasattr(client, "seq_clear"):
+                client.seq_clear()
             return True
         else:
             time.sleep(0.1)
@@ -309,7 +310,7 @@ def main():
                 (mid_joint.reshape(-1, 1), tau_comp.reshape(-1, 1)),
                 axis=1,
             )
-            _ = hexarm_client.set_cmds(cmds)
+            hexarm_client.set_cmds(cmds)
 
         rate.sleep()
 

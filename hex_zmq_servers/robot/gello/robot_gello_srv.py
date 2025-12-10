@@ -24,6 +24,8 @@ except (ImportError, ValueError):
 NET_CONFIG = {
     "ip": "127.0.0.1",
     "port": 12345,
+    "realtime_mode": False,
+    "deque_maxlen": 10,
     "client_timeout_ms": 200,
     "server_timeout_ms": 1_000,
     "server_num_workers": 4,
@@ -57,11 +59,14 @@ class HexRobotGelloServer(HexRobotServerBase):
         HexRobotServerBase.__init__(self, net_config)
 
         # robot
-        self._device = HexRobotGello(params_config)
+        self._device = HexRobotGello(params_config,
+                                     net_config.get("realtime_mode", False))
 
     def _process_request(self, recv_hdr: dict, recv_buf: np.ndarray):
         if recv_hdr["cmd"] == "is_working":
             return self.no_ts_hdr(recv_hdr, self._device.is_working()), None
+        elif recv_hdr["cmd"] == "seq_clear":
+            return self.no_ts_hdr(recv_hdr, self._seq_clear()), None
         elif recv_hdr["cmd"] == "get_dofs":
             dofs = self._device.get_dofs()
             return self.no_ts_hdr(recv_hdr, dofs is not None), dofs

@@ -7,7 +7,7 @@
 ################################################################
 
 import numpy as np
-from hex_zmq_servers.zmq_base import HexSafeValue
+from collections import deque
 
 try:
     from ..mujoco_base import HexMujocoServerBase
@@ -25,13 +25,15 @@ except (ImportError, ValueError):
 NET_CONFIG = {
     "ip": "127.0.0.1",
     "port": 12345,
+    "realtime_mode": False,
+    "deque_maxlen": 10,
     "client_timeout_ms": 200,
     "server_timeout_ms": 1_000,
     "server_num_workers": 4,
 }
 
 MUJOCO_CONFIG = {
-    "states_rate": 250,
+    "states_rate": 1000,
     "img_rate": 30,
     "headless": False,
     "sens_ts": True,
@@ -48,37 +50,39 @@ class HexMujocoE3DesktopServer(HexMujocoServerBase):
         HexMujocoServerBase.__init__(self, net_config)
 
         # mujoco
-        self._device = HexMujocoE3Desktop(params_config)
+        self._device = HexMujocoE3Desktop(
+            params_config, net_config.get("realtime_mode", False))
 
         # values
         self._cmds_left_seq = -1
         self._cmds_right_seq = -1
-        self._states_left_value = HexSafeValue()
-        self._states_right_value = HexSafeValue()
-        self._states_obj_value = HexSafeValue()
-        self._cmds_left_value = HexSafeValue()
-        self._cmds_right_value = HexSafeValue()
-        self._rgb_head_value = HexSafeValue()
-        self._depth_head_value = HexSafeValue()
-        self._rgb_left_value = HexSafeValue()
-        self._depth_left_value = HexSafeValue()
-        self._rgb_right_value = HexSafeValue()
-        self._depth_right_value = HexSafeValue()
+        self._states_left_queue = deque(maxlen=self._deque_maxlen)
+        self._states_right_queue = deque(maxlen=self._deque_maxlen)
+        self._states_obj_queue = deque(maxlen=self._deque_maxlen)
+        self._cmds_left_queue = deque(maxlen=self._deque_maxlen)
+        self._cmds_right_queue = deque(maxlen=self._deque_maxlen)
+        self._rgb_head_queue = deque(maxlen=self._deque_maxlen)
+        self._depth_head_queue = deque(maxlen=self._deque_maxlen)
+        self._rgb_left_queue = deque(maxlen=self._deque_maxlen)
+        self._depth_left_queue = deque(maxlen=self._deque_maxlen)
+        self._rgb_right_queue = deque(maxlen=self._deque_maxlen)
+        self._depth_right_queue = deque(maxlen=self._deque_maxlen)
 
     def work_loop(self):
         try:
             self._device.work_loop([
-                self._states_left_value,
-                self._states_right_value,
-                self._states_obj_value,
-                self._cmds_left_value,
-                self._cmds_right_value,
-                self._rgb_head_value,
-                self._depth_head_value,
-                self._rgb_left_value,
-                self._depth_left_value,
-                self._rgb_right_value,
-                self._depth_right_value,
+                self._states_left_queue,
+                self._states_right_queue,
+                self._states_obj_queue,
+                self._cmds_left_queue,
+                self._cmds_right_queue,
+                self._rgb_head_queue,
+                self._depth_head_queue,
+                self._rgb_left_queue,
+                self._depth_left_queue,
+                self._rgb_right_queue,
+                self._depth_right_queue,
+                self._stop_event,
             ])
         finally:
             self._device.close()
@@ -93,16 +97,19 @@ class HexMujocoE3DesktopServer(HexMujocoServerBase):
         # get robot name
         robot_name = recv_hdr["cmd"].split("_")[2]
         if robot_name == "left":
-            value = self._states_left_value
+            queue = self._states_left_queue
         elif robot_name == "right":
-            value = self._states_right_value
+            queue = self._states_right_queue
         elif robot_name == "obj":
-            value = self._states_obj_value
+            queue = self._states_obj_queue
         else:
             raise ValueError(f"unknown robot name: {robot_name}")
 
         try:
-            ts, count, states = value.get()
+            ts, count, states = queue[
+                -1] if self._realtime_mode else queue.popleft()
+        except IndexError:
+            return {"cmd": f"{recv_hdr['cmd']}_failed"}, None
         except Exception as e:
             print(f"\033[91m{recv_hdr['cmd']} failed: {e}\033[0m")
             return {"cmd": f"{recv_hdr['cmd']}_failed"}, None
@@ -119,14 +126,19 @@ class HexMujocoE3DesktopServer(HexMujocoServerBase):
 
     def _set_cmds(self, recv_hdr: dict, recv_buf: np.ndarray):
         seq = recv_hdr.get("args", None)
+        if self._seq_clear_flag:
+            self._seq_clear_flag = False
+            self._cmds_left_seq = -1
+            self._cmds_right_seq = -1
+            return self.no_ts_hdr(recv_hdr, False), None
 
         # get robot name
         robot_name = recv_hdr["cmd"].split("_")[2]
         if robot_name == "left":
-            value = self._cmds_left_value
+            queue = self._cmds_left_queue
             cmds_seq = self._cmds_left_seq
         elif robot_name == "right":
-            value = self._cmds_right_value
+            queue = self._cmds_right_queue
             cmds_seq = self._cmds_right_seq
         else:
             raise ValueError(f"unknown robot name: {robot_name}")
@@ -138,7 +150,7 @@ class HexMujocoE3DesktopServer(HexMujocoServerBase):
                     self._cmds_left_seq = cmds_seq
                 elif robot_name == "right":
                     self._cmds_right_seq = cmds_seq
-                value.set((recv_hdr["ts"], seq, recv_buf))
+                queue.append((recv_hdr["ts"], seq, recv_buf))
                 return self.no_ts_hdr(recv_hdr, True), None
             else:
                 return self.no_ts_hdr(recv_hdr, False), None
@@ -157,16 +169,19 @@ class HexMujocoE3DesktopServer(HexMujocoServerBase):
         depth_flag = split_cmd[1] == "depth"
         camera_name = split_cmd[2]
         if camera_name == "head":
-            value = self._rgb_head_value if not depth_flag else self._depth_head_value
+            queue = self._rgb_head_queue if not depth_flag else self._depth_head_queue
         elif camera_name == "left":
-            value = self._rgb_left_value if not depth_flag else self._depth_left_value
+            queue = self._rgb_left_queue if not depth_flag else self._depth_left_queue
         elif camera_name == "right":
-            value = self._rgb_right_value if not depth_flag else self._depth_right_value
+            queue = self._rgb_right_queue if not depth_flag else self._depth_right_queue
         else:
             raise ValueError(f"unknown camera name: {camera_name}")
 
         try:
-            ts, count, img = value.get()
+            ts, count, img = queue[
+                -1] if self._realtime_mode else queue.popleft()
+        except IndexError:
+            return {"cmd": f"{recv_hdr['cmd']}_failed"}, None
         except Exception as e:
             print(f"\033[91m{recv_hdr['cmd']} failed: {e}\033[0m")
             return {"cmd": f"{recv_hdr['cmd']}_failed"}, None
@@ -184,6 +199,8 @@ class HexMujocoE3DesktopServer(HexMujocoServerBase):
     def _process_request(self, recv_hdr: dict, recv_buf: np.ndarray):
         if recv_hdr["cmd"] == "is_working":
             return self.no_ts_hdr(recv_hdr, self._device.is_working()), None
+        elif recv_hdr["cmd"] == "seq_clear":
+            return self.no_ts_hdr(recv_hdr, self._seq_clear()), None
         elif recv_hdr["cmd"] == "reset":
             return self.no_ts_hdr(recv_hdr, self._device.reset()), None
         elif recv_hdr["cmd"] == "get_dofs":

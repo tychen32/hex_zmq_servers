@@ -20,8 +20,9 @@ from hex_robo_utils import HexDynUtil as DynUtil
 
 def wait_client_working(client, timeout: float = 5.0) -> bool:
     for _ in range(int(timeout * 10)):
-        working = client.is_working()
-        if working is not None and working["cmd"] == "is_working_ok":
+        if client.is_working():
+            if hasattr(client, "seq_clear"):
+                client.seq_clear()
             return True
         else:
             time.sleep(0.1)
@@ -50,10 +51,10 @@ def main():
 
     # wait servers to work
     if not wait_client_working(gello_client):
-        hex_log(HEX_LOG_LEVEL["error"], "gello server is not working")
+        hex_log(HEX_LOG_LEVEL["err"], "gello server is not working")
         return
     if not wait_client_working(hexarm_client):
-        hex_log(HEX_LOG_LEVEL["error"], "hexarm server is not working")
+        hex_log(HEX_LOG_LEVEL["err"], "hexarm server is not working")
         return
 
     # work loop
@@ -82,7 +83,7 @@ def main():
                 cmds = np.concatenate(
                     (gello_cmds.reshape(-1, 1), tau_comp.reshape(-1, 1)),
                     axis=1)
-                _ = hexarm_client.set_cmds(cmds)
+                hexarm_client.set_cmds(cmds)
 
         rate.sleep()
 

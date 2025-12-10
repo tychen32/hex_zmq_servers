@@ -14,15 +14,16 @@ from hex_zmq_servers import (
     HEX_LOG_LEVEL,
     hex_log,
     HexRobotGelloClient,
-    HexMujocoArcherD6yClient,
+    HexMujocoArcherY6Client,
 )
 from hex_robo_utils import HexDynUtil as DynUtil
 
 
 def wait_client_working(client, timeout: float = 5.0) -> bool:
     for _ in range(int(timeout * 10)):
-        working = client.is_working()
-        if working is not None and working["cmd"] == "is_working_ok":
+        if client.is_working():
+            if hasattr(client, "seq_clear"):
+                client.seq_clear()
             return True
         else:
             time.sleep(0.1)
@@ -45,15 +46,15 @@ def main():
         raise ValueError(f"cfg is not valid, missing key: {missing_key}")
 
     gello_client = HexRobotGelloClient(net_config=gello_net_cfg)
-    mujoco_client = HexMujocoArcherD6yClient(net_config=mujoco_net_cfg)
+    mujoco_client = HexMujocoArcherY6Client(net_config=mujoco_net_cfg)
     dyn_util = DynUtil(model_path, last_link)
 
     # wait servers to work
     if not wait_client_working(gello_client):
-        hex_log(HEX_LOG_LEVEL["error"], "gello server is not working")
+        hex_log(HEX_LOG_LEVEL["err"], "gello server is not working")
         return
     if not wait_client_working(mujoco_client):
-        hex_log(HEX_LOG_LEVEL["error"], "mujoco server is not working")
+        hex_log(HEX_LOG_LEVEL["err"], "mujoco server is not working")
         return
 
     # work loop
@@ -69,15 +70,16 @@ def main():
             # robot
             robot_states_hdr, robot_states = mujoco_client.get_states("robot")
             if robot_states_hdr is not None:
-                arm_q = robot_states[:, 0]
-                arm_dq = robot_states[:, 1]
+                arm_q = robot_states[:, 0][:-1]
+                arm_dq = robot_states[:, 1][:-1]
                 _, c_mat, g_vec, _, _ = dyn_util.dynamic_params(arm_q, arm_dq)
-                tau_comp = c_mat @ arm_dq + g_vec
+                tau_comp = np.zeros(7)
+                tau_comp[:-1] = c_mat @ arm_dq + g_vec
                 if gello_cmds is not None:
                     cmds = np.concatenate(
                         (gello_cmds.reshape(-1, 1), tau_comp.reshape(-1, 1)),
                         axis=1)
-                    _ = mujoco_client.set_cmds(cmds)
+                    mujoco_client.set_cmds(cmds)
 
             # rgb
             rgb_hdr, rgb = mujoco_client.get_rgb()

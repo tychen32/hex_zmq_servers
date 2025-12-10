@@ -6,7 +6,7 @@
 # Date  : 2025-09-25
 ################################################################
 
-import argparse, json, time
+import argparse, json
 from hex_zmq_servers import (
     HexRate,
     hex_zmq_ts_now,
@@ -29,16 +29,8 @@ def main():
         missing_key = ke.args[0]
         raise ValueError(f"cfg is not valid, missing key: {missing_key}")
 
+    # robot client
     client = HexRobotGelloClient(net_config=net_config)
-
-    # wait for robot to work
-    for i in range(5):
-        hex_log(HEX_LOG_LEVEL["info"], f"waiting for robot to work: {i}s")
-        working = client.is_working()
-        if working is not None and working["cmd"] == "is_working_ok":
-            break
-        else:
-            time.sleep(1.0)
 
     # get dofs
     dofs = client.get_dofs()[0]

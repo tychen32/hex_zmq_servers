@@ -2,6 +2,8 @@
     "net": {
         "ip": "127.0.0.1",
         "port": 12345,
+        "realtime_mode": false,
+        "deque_maxlen": 10,
         "client_timeout_ms": 200,
         "server_timeout_ms": 1000,
         "server_num_workers": 4
@@ -9,8 +11,8 @@
     "params": {
         "device_ip": "172.18.8.161",
         "device_port": 8439,
-        "control_hz": 250,
-        "arm_type": 16,
+        "control_hz": 1000,
+        "arm_type": "archer_l6y",
         "use_gripper": true,
         "mit_kp": [
             200.0,
