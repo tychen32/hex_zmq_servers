@@ -53,7 +53,7 @@ def main():
             hex_log(HEX_LOG_LEVEL["info"], f"states eff: {states[:, 2]}")
 
         cmds = np.array([
-            0.5,
+            0.2,
             -1.5,
             3.0,
             0.0,

@@ -62,8 +62,7 @@ class HexMujocoArcherY6Client(HexMujocoClientBase):
                         self._depth_queue.append((hdr, img))
 
             try:
-                cmds = self._cmds_queue[
-                    -1] if self._realtime_mode else self._cmds_queue.popleft()
+                cmds = self._cmds_queue[-1]
                 _ = self._set_cmds_inner(cmds)
             except IndexError:
                 pass

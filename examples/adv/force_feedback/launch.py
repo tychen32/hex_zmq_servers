@@ -13,7 +13,7 @@ from hex_zmq_servers import HEXARM_URDF_PATH_DICT
 
 # robot model config
 ARM_TYPE = "archer_y6"
-GRIPPER_TYPE = "empty"
+GRIPPER_TYPE = "gp100"
 if GRIPPER_TYPE == "empty":
     USE_GRIPPER = False
 else:
@@ -24,8 +24,9 @@ MASTER_SRV_PORT = 12345
 SLAVE_SRV_PORT = 12346
 
 # device config
-DEVICE_IP = "192.168.1.111"
+MASTER_DEVICE_IP = "192.168.1.102"
 MASTER_DEVICE_PORT = 8439
+SLAVE_DEVICE_IP = "192.168.1.102"
 SLAVE_DEVICE_PORT = 9439
 
 # node params
@@ -43,9 +44,11 @@ NODE_PARAMS_DICT = {
             "last_link": "link_6",
             "use_gripper": USE_GRIPPER,
             "hexarm_master_net_cfg": {
+                "realtime_mode": True,
                 "port": MASTER_SRV_PORT,
             },
             "hexarm_slave_net_cfg": {
+                "realtime_mode": True,
                 "port": SLAVE_SRV_PORT,
             },
         },
@@ -56,10 +59,11 @@ NODE_PARAMS_DICT = {
         "cfg_path": HEX_ZMQ_CONFIGS_PATH_DICT["robot_hexarm"],
         "cfg": {
             "net": {
+                "realtime_mode": True,
                 "port": MASTER_SRV_PORT,
             },
             "params": {
-                "device_ip": DEVICE_IP,
+                "device_ip": MASTER_DEVICE_IP,
                 "device_port": MASTER_DEVICE_PORT,
                 "control_hz": 500,
                 "arm_type": ARM_TYPE,
@@ -76,10 +80,11 @@ NODE_PARAMS_DICT = {
         "cfg_path": HEX_ZMQ_CONFIGS_PATH_DICT["robot_hexarm"],
         "cfg": {
             "net": {
+                "realtime_mode": True,
                 "port": SLAVE_SRV_PORT,
             },
             "params": {
-                "device_ip": DEVICE_IP,
+                "device_ip": SLAVE_DEVICE_IP,
                 "device_port": SLAVE_DEVICE_PORT,
                 "control_hz": 500,
                 "arm_type": ARM_TYPE,

@@ -2,15 +2,13 @@
 
 ## Description
 
-This example demonstrates bilateral teleoperation with force feedback. The master HexArm can feel the forces encountered by the slave HexArm, providing realistic haptic feedback for improved operation precision and safety.
+This example demonstrates how to use multiple Force feedback devices using multi-launch. It allows for simultaneous teleoperation of multiple HexArm robots using force feedback.
 
 ## Structure
 
 ```bash
 force_feedback/
-├── cli.py     # client code (working code)
-├── cli.json   # client configuration
-├── launch.py  # launch script
+├── launch.py  # multi-launch script
 └── README.md  # this file
 ```
 

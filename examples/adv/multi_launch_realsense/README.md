@@ -8,9 +8,7 @@ This example shows how to use multiple RealSense RGB-D camera devices using mult
 
 ```bash
 cam_realsense/
-├── cli.py     # client code (working code)
-├── cli.json   # client configuration
-├── launch.py  # launch script
+├── launch.py  # multi-launch script
 └── README.md  # this file
 ```
 

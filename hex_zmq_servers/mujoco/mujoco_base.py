@@ -129,7 +129,7 @@ class HexMujocoClientBase(HexZMQClientBase):
             "depth": deque(maxlen=self._deque_maxlen),
         }
         self._cmds_seq = 0
-        self._cmds_queue = deque(maxlen=self._deque_maxlen)
+        self._cmds_queue = deque(maxlen=1)
 
     def __del__(self):
         HexZMQClientBase.__del__(self)
@@ -317,7 +317,7 @@ class HexMujocoServerBase(HexZMQServerBase):
         self._device: HexDeviceBase = None
         self._states_queue = deque(maxlen=self._deque_maxlen)
         self._obj_pose_queue = deque(maxlen=self._deque_maxlen)
-        self._cmds_queue = deque(maxlen=self._deque_maxlen)
+        self._cmds_queue = deque(maxlen=1)
         self._cmds_seq = -1
         self._rgb_queue = deque(maxlen=self._deque_maxlen)
         self._depth_queue = deque(maxlen=self._deque_maxlen)

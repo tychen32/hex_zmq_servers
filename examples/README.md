@@ -6,29 +6,32 @@ This directory contains the example code of `hex_zmq_servers`, showing how to us
 
 ```bash
 examples/
-├── basic/                      # Basic examples (single device)
-│   ├── robot_dummy/            # Dummy robot
-│   ├── robot_gello/            # GELLO robot
-│   ├── robot_hexarm/           # HexArm robot
-│   ├── cam_dummy/              # Dummy camera
-│   ├── cam_rgb/                # RGB camera
-│   ├── cam_berxel/             # Berxel RGB-D camera
-│   ├── cam_realsense/          # Realsense RGB-D camera
-│   ├── mujoco_archer_y6/       # Archer Y6 simulation
-│   ├── mujoco_e3_desktop/      # E3 Desktop simulation
-│   └── zmq_dummy/              # ZMQ communication test
-└── adv/                        # Advanced examples (multi-device coordination)
-    ├── gello_sim/              # GELLO + Mujoco simulation teleoperation
-    ├── gello_real/             # GELLO + real robot teleoperation
-    ├── joy_sim/                # Joystick + Mujoco simulation control
-    ├── joy_real/               # Joystick + real robot control
-    ├── force_feedback/         # Force feedback teleoperation
-    ├── zero_gravity/           # Zero gravity test
-    ├── multi_berxel/           # Multi Berxel example
-    ├── multi_realsense/        # Multi Realsense example
-    ├── multi_launch/           # Multi launch example
-    ├── multi_launch_berxel/    # Multi launch Berxel example
-    └── multi_launch_realsense/ # Multi launch Realsense example
+├── basic/                           # Basic examples (single device)
+│   ├── robot_dummy/                 # Dummy robot
+│   ├── robot_gello/                 # GELLO robot
+│   ├── robot_hexarm/                # HexArm robot
+│   ├── cam_dummy/                   # Dummy camera
+│   ├── cam_rgb/                     # RGB camera
+│   ├── cam_berxel/                  # Berxel RGB-D camera
+│   ├── cam_realsense/               # Realsense RGB-D camera
+│   ├── mujoco_archer_y6/            # Archer Y6 simulation
+│   ├── mujoco_e3_desktop/           # E3 Desktop simulation
+│   └── zmq_dummy/                   # ZMQ communication test
+└── adv/                             # Advanced examples (multi-device coordination)
+    ├── double_gello_sim/            # GELLO + Mujoco simulation teleoperation
+    ├── double_gello_real/           # GELLO + E3-Desktop teleoperation
+    ├── gello_sim/                   # GELLO + Mujoco simulation teleoperation
+    ├── gello_real/                  # GELLO + real robot teleoperation
+    ├── joy_sim/                     # Joystick + Mujoco simulation control
+    ├── joy_real/                    # Joystick + real robot control
+    ├── force_feedback/              # Force feedback teleoperation
+    ├── zero_gravity/                # Zero gravity test
+    ├── multi_berxel/                # Multi Berxel example
+    ├── multi_realsense/             # Multi Realsense example
+    ├── multi_launch/                # Multi launch example
+    ├── multi_launch_force_feedback/ # Multi launch Force feedback example
+    ├── multi_launch_berxel/         # Multi launch Berxel example
+    └── multi_launch_realsense/      # Multi launch Realsense example
 ```
 
 ## Example Categories
@@ -68,6 +71,12 @@ examples/
 
 ### Advanced Examples
 
+- **double_gello_sim**
+  - Description: GELLO + Mujoco simulation teleoperation example, showing how to use GELLO controller to control Mujoco simulation.
+  - [Details](adv/double_gello_sim/README.md)
+- **double_gello_real**
+  - Description: GELLO + E3-Desktop teleoperation example, showing how to use GELLO controller to control E3-Desktop robot.
+  - [Details](adv/double_gello_real/README.md)
 - **gello_sim**
   - Description: GELLO + Mujoco simulation teleoperation example, showing how to use GELLO controller to control Mujoco simulation.
   - [Details](adv/gello_sim/README.md)
@@ -95,6 +104,9 @@ examples/
 - **multi_launch**
   - Description: Multi launch example, showing how to use multiple launch files.
   - [Details](adv/multi_launch/README.md)
+- **multi_launch_force_feedback**
+  - Description: Multi launch Force feedback example, showing how to use multiple launch files to start multiple Force feedback devices.
+  - [Details](adv/multi_launch_force_feedback/README.md)
 - **multi_launch_berxel**
   - Description: Multi launch Berxel example, showing how to use multiple launch files to start multiple Berxel RGB-D camera devices.
   - [Details](adv/multi_launch_berxel/README.md)

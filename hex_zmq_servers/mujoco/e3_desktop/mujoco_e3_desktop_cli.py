@@ -84,8 +84,8 @@ class HexMujocoE3DesktopClient(HexMujocoClientBase):
             "right": 0,
         }
         self._cmds_queue = {
-            "left": deque(maxlen=self._deque_maxlen),
-            "right": deque(maxlen=self._deque_maxlen),
+            "left": deque(maxlen=1),
+            "right": deque(maxlen=1),
         }
         self._wait_for_working()
 
@@ -272,16 +272,12 @@ class HexMujocoE3DesktopClient(HexMujocoClientBase):
                         self._camera_queue["right_depth"].append((hdr, img))
 
             try:
-                cmds = self._cmds_queue["left"][
-                    -1] if self._realtime_mode else self._cmds_queue[
-                        "left"].popleft()
+                cmds = self._cmds_queue["left"][-1]
                 _ = self._set_cmds_inner(cmds, "left")
             except IndexError:
                 pass
             try:
-                cmds = self._cmds_queue["right"][
-                    -1] if self._realtime_mode else self._cmds_queue[
-                        "right"].popleft()
+                cmds = self._cmds_queue["right"][-1]
                 _ = self._set_cmds_inner(cmds, "right")
             except IndexError:
                 pass

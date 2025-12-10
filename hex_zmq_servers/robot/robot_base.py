@@ -103,7 +103,7 @@ class HexRobotClientBase(HexZMQClientBase):
         self._used_states_seq = 0
         self._cmds_seq = 0
         self._states_queue = deque(maxlen=self._deque_maxlen)
-        self._cmds_queue = deque(maxlen=self._deque_maxlen)
+        self._cmds_queue = deque(maxlen=1)
 
     def __del__(self):
         HexZMQClientBase.__del__(self)
@@ -189,8 +189,7 @@ class HexRobotClientBase(HexZMQClientBase):
                 self._states_queue.append((hdr, states))
 
             try:
-                cmds = self._cmds_queue[
-                    -1] if self._realtime_mode else self._cmds_queue.popleft()
+                cmds = self._cmds_queue[-1]
                 _ = self._set_cmds_inner(cmds)
             except IndexError:
                 pass
@@ -204,7 +203,7 @@ class HexRobotServerBase(HexZMQServerBase):
         HexZMQServerBase.__init__(self, net_config)
         self._device: HexDeviceBase = None
         self._states_queue = deque(maxlen=self._deque_maxlen)
-        self._cmds_queue = deque(maxlen=self._deque_maxlen)
+        self._cmds_queue = deque(maxlen=1)
         self._cmds_seq = -1
         self._seq_clear_flag = False
 

@@ -71,7 +71,7 @@ def main():
         return
 
     # work loop
-    rate = HexRate(500)
+    rate = HexRate(2e3)
     res_comp = False
     master_q = None
     slave_res_q = np.zeros(len(comp_weight))
