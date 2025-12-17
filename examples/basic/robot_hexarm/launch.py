@@ -19,8 +19,8 @@ else:
     USE_GRIPPER = True
 
 # device config
-DEVICE_IP = "192.168.1.102"
-HEXARM_DEVICE_PORT = 9439
+DEVICE_IP = "10.42.0.101"
+HEXARM_DEVICE_PORT = 8439
 
 # node params
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))

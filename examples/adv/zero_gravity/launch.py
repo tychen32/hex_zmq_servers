@@ -23,8 +23,8 @@ else:
 HEXARM_SRV_PORT = 12345
 
 # device config
-DEVICE_IP = "192.168.1.101"
-HEXARM_DEVICE_PORT = 9439
+DEVICE_IP = "10.42.0.45"
+HEXARM_DEVICE_PORT = 8439
 
 # node params
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))

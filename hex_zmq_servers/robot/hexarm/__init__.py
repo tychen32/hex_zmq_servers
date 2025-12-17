@@ -34,6 +34,8 @@ HEXARM_URDF_PATH_DICT = {
     f"{urdf_dir}/archer_l6y/gp100_p050.urdf",
     "archer_l6y_gp100_p050_handle":
     f"{urdf_dir}/archer_l6y/gp100_p050_handle.urdf",
+    "archer_l6y_gp100_d435i":
+    f"{urdf_dir}/archer_l6y/gp100_d435i.urdf",
 }
 
 __all__ = [
